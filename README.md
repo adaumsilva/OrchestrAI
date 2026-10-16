@@ -1,11 +1,40 @@
 # OrchestrAI
 
-A spatial canvas terminal workspace for AI agents (Electron + xterm.js + node-pty).
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Electron](https://img.shields.io/badge/Electron-44-47848f.svg)](https://www.electronjs.org/)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![good first issues](https://img.shields.io/github/issues/adaumsilva/OrchestrAI/good%20first%20issue?label=good%20first%20issues&color=7057ff)](https://github.com/adaumsilva/OrchestrAI/labels/good%20first%20issue)
 
+**A spatial canvas for running AI coding agents side by side.** Arrange terminals, notes, git, files, browsers and Android devices on an infinite canvas, connect them with ropes, run each agent in an isolated git worktree ("floor"), and let a *Maestro* terminal conduct the rest. Works with Claude Code, Codex, OpenCode, Antigravity or any CLI. Built with Electron, xterm.js and node-pty.
+
+> Independent open-source project. It is not affiliated with or endorsed by any similar product.
+
+## Highlights
+- **Infinite canvas** of terminals, notes, drawings, file trees, git, chat, portal (browser) and device nodes, with ropes, tidy layout, minimap and undo/redo.
+- **Floors**: one canvas per task, optionally an isolated git worktree and branch, with setup/landing hooks and a reviewed merge back.
+- **Multi-agent orchestration**: a Maestro terminal can create, message and read other terminals through the `orchestrai` CLI.
+- **Agent awareness**: activity monitoring, notifications, task manager with CPU/memory, and token/limit tracking per provider.
+- **Sessions that survive**: optional `tmux` persistence, scrollback restore, automatic backups.
+- **Runs anywhere you work**: local shells, WSL, SSH and Docker containers; themes and fonts per terminal.
+
+## Quick start
+Requires [Node.js](https://nodejs.org/) 18+ and git. Windows is the primary platform; macOS and Linux are untested (help welcome).
+
+    git clone https://github.com/adaumsilva/OrchestrAI.git
+    cd OrchestrAI
     npm install
     npm start
 
-If you launch from a VS Code or Claude Code shell, unset `ELECTRON_RUN_AS_NODE` first.
+If you launch from a VS Code or Claude Code shell, unset `ELECTRON_RUN_AS_NODE` first (`env -u ELECTRON_RUN_AS_NODE npm start` in Git Bash, `Remove-Item Env:ELECTRON_RUN_AS_NODE` in PowerShell).
+
+## Contributing
+Contributions are welcome, including your first one.
+- Browse [good first issues](https://github.com/adaumsilva/OrchestrAI/labels/good%20first%20issue) and [help wanted](https://github.com/adaumsilva/OrchestrAI/labels/help%20wanted).
+- Issues are labeled by area (`area:canvas`, `area:terminal`, `area:agents`, `area:git`, ...) and priority. The full backlog is in [docs/roadmap/issues.md](docs/roadmap/issues.md).
+- Read [CONTRIBUTING.md](CONTRIBUTING.md) for the code layout, how to add a node kind, and how changes are verified.
+
+## Contents
+[Canvas](#canvas) · [Floors](#floors) · [Terminal sheet](#terminal-sheet-new--edit-terminal) · [Terminals overview](#terminals-overview) · [Task manager](#task-manager) · [Themes](#themes) · [Terminals](#terminals) · [Nodes](#nodes) · [Workspace](#workspace) · [License](#license)
 
 ## Canvas
 - Pan: drag the background. Zoom: wheel or the `-`/`+` buttons.
@@ -58,3 +87,5 @@ In **Settings** (⚙): pick a theme (Follow system, Dark, Light, Midnight, Solar
 
 ## Workspace
 The `⋯` button opens export / import, a backup list and the backups folder. A backup is written every 10 minutes when something changed, and on quit (last 20 kept). A tray icon offers Show / Hide / Quit.
+## License
+[MIT](LICENSE) © 2026 Adam Silva
