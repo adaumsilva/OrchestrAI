@@ -354,3 +354,16 @@ webview { flex: 1; min-height: 0; background: #fff; border-radius: 6px; }
 .chat-hit { padding: 6px 8px; border-radius: 8px; cursor: pointer; border: 1px solid var(--border); }
 .chat-hit:hover { background: var(--hover); }
 .node-head button.unread::after { content: ''; display: inline-block; width: 7px; height: 7px; margin-left: 3px; border-radius: 50%; background: var(--accent); vertical-align: middle; }
+
+/* agent usage */
+#usage-btn.warn { color: var(--warning); }
+.node.near-limit { border-color: var(--warning); }
+.usage { display: flex; flex-direction: column; gap: 10px; }
+.usage-card { border: 1px solid var(--border-strong); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.usage-head { display: flex; align-items: baseline; }
+.usage-line { display: flex; justify-content: space-between; gap: 12px; }
+.usage-bar { height: 6px; border-radius: 3px; background: var(--active); overflow: hidden; margin: 4px 0; }
+.usage-bar > div { height: 100%; background: var(--accent); border-radius: 3px; }
+.usage-bar.warn > div { background: var(--warning); }
+.usage-detail { font-size: 11px; }
+.usage-err { color: var(--warning); }

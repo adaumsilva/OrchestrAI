@@ -1,0 +1,11 @@
+{
+  "id": "codex",
+  "name": "Codex",
+  "command": "codex",
+  "parser": "codex-rollouts",
+  "root": "~/.codex/sessions",
+  "windows": [
+    { "label": "5-hour window", "minutes": 300 },
+    { "label": "Weekly window", "minutes": 10080 }
+  ]
+}

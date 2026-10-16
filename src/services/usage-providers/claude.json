@@ -1,0 +1,12 @@
+{
+  "id": "claude",
+  "name": "Claude Code",
+  "command": "claude",
+  "parser": "claude-transcripts",
+  "root": "~/.claude/projects",
+  "windows": [
+    { "label": "Last 5 hours", "minutes": 300 },
+    { "label": "Last 7 days", "minutes": 10080 }
+  ],
+  "limits": {}
+}

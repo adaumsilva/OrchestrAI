@@ -158,6 +158,7 @@ chat.register(ipcMain, getWin);
 device.register(ipcMain);
 data.register(ipcMain, getWin);
 require('./services/maestri').register(ipcMain);
+require('./services/usage').register(ipcMain);
 shells.register(ipcMain, require('electron').shell);
 require('./services/tmux').register(ipcMain);
 ipcMain.handle('app:attentionCount', (_e, n) => tray.setAttention(n));
