@@ -160,6 +160,7 @@ const SHORTCUTS = [
   ['Tidy', 'T arranges the selection, or all nodes'],
   ['Minimap', 'M'],
   ['Terminals overview', 'L lists every terminal with its status; click one to jump to it'],
+  ['Task manager', 'K shows what each terminal is running, with CPU, memory and time; sort, interrupt or restart from there'],
   ['Delete selection', 'Delete or Backspace'],
   ['Undo / redo', 'Ctrl+Z / Ctrl+Shift+Z (nodes, ropes, layout)'],
   ['Next / previous node', 'Alt+] / Alt+['],

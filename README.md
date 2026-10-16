@@ -36,6 +36,9 @@ Tabs under the toolbar. Each floor is its own canvas with its own working direct
 ## Terminals overview
 The **Terminals** toolbar button (or `L`) opens a panel listing every terminal on every floor with its status (starting, running, idle, restored, exited), floor and role. Terminals that need attention are listed first and counted in a badge on the button and in the tray tooltip. Click a row to jump to that terminal; focusing it clears its attention flag.
 
+## Task manager
+The **Tasks** toolbar button (or `K`) opens a live table of every terminal: the foreground process of its process tree, CPU (100% = one core), memory, uptime, time in the current status and total busy time, with CPU/memory sparklines. Terminals running a known agent (Claude Code, Codex, or any provider definition from **Usage**) also show **Tokens** (the shortest window) and **Limit** (highest percent used, amber from 80%; "no limit" when the provider reports none); hover for every window. These figures are per provider account, not per terminal, so two Claude terminals show the same numbers. Click a column to sort; click a row to jump to the terminal. Per row: Ctrl+C, end the running task (the shell stays), restart, copy pid. Rows turn amber when hot (80% CPU or 1 GB) and flag a task that produced no output for 5 minutes. Sampling (PowerShell/CIM on Windows, `ps` elsewhere) runs only while the panel is open.
+
 ## Themes
 In **Settings** (⚙): pick a theme (Follow system, Dark, Light, Midnight, Solarized dark, or your own). *Follow system* switches between the **Light theme** and **Dark theme** you choose, following the OS appearance. **Custom themes** has a color editor (background, text, cursor, selection, 16 ANSI colors) and **Import…**, which reads xterm.js / VS Code style JSON and Windows Terminal color schemes. Each terminal can override the theme and font in its Appearance tab.
 

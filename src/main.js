@@ -11,6 +11,7 @@ const data = require('./services/data');
 const shells = require('./services/shells');
 const bridge = require('./services/bridge');
 const tray = require('./services/tray');
+const procstats = require('./services/procstats');
 
 const ptys = new Map();
 let win;
@@ -111,6 +112,7 @@ ipcMain.handle('pty:spawn', (_e, { id, cwd, cols, rows, profile, env, maestro })
     ptys.delete(id);
     try { win.webContents.send('pty:exit', id, exitCode); } catch {}
   });
+  p.startedAt = Date.now();
   ptys.set(id, p);
   return { ok: true, pid: p.pid };
 });
@@ -124,6 +126,24 @@ ipcMain.handle('pty:send', (_e, id, text) => {
   if (!p) return false;
   p.write(text);
   return true;
+});
+
+// Task Manager: CPU, memory and foreground process of every live terminal's process tree.
+ipcMain.handle('pty:stats', async () => {
+  const targets = [...ptys].map(([id, p]) => ({ id, pid: p.pid }));
+  try {
+    const r = await procstats.sample(targets);
+    for (const [id, p] of ptys) if (r.procs[id]) r.procs[id].startedAt = p.startedAt;
+    return r;
+  } catch (err) { return { error: String(err.message || err), procs: {} }; }
+});
+// Ends the foreground process of a terminal (never the shell itself; use Restart for that).
+ipcMain.handle('pty:killForeground', async (_e, id) => {
+  const p = ptys.get(id);
+  if (!p) return false;
+  const r = (await procstats.sample([{ id, pid: p.pid }])).procs[id];
+  if (!r?.fg || r.fg.pid === p.pid) return false;
+  try { process.kill(r.fg.pid); return true; } catch { return false; }
 });
 
 ipcMain.handle('workspace:load', () => {

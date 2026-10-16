@@ -296,6 +296,8 @@ NodeKinds.terminal = {
     entry.api.snapshot = () => serialize.serialize({ scrollback: 300 });
     entry.api.restart = restart;
     entry.api.status = () => status;
+    entry.api.lastOutput = () => lastChunk;
+    entry.api.interrupt = () => call('pty:send', node.id, String.fromCharCode(3));
     entry.api.clearAttention = clearAttention;
     entry.api.applyAppearance = applyAppearance;
     entry.api.applySettings = () => {
