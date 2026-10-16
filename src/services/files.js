@@ -1,4 +1,5 @@
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { dialog, shell } = require('electron');
 
@@ -116,6 +117,20 @@ function register(ipcMain, getWin) {
   ipcMain.handle('files:pickDirectory', async () => {
     const r = await dialog.showOpenDialog(getWin(), { properties: ['openDirectory', 'createDirectory'] });
     return r.canceled ? null : r.filePaths[0];
+  });
+
+  // Prompter attachments: pasted images/files are written to a temp folder and referenced by path.
+  ipcMain.handle('files:saveAttachment', async (_e, name, base64) => {
+    const dir = path.join(os.tmpdir(), 'orchestrai-attachments');
+    await fs.promises.mkdir(dir, { recursive: true });
+    const safe = String(name || 'attachment').replace(/[^\w.\- ]+/g, '_').slice(-80);
+    const file = path.join(dir, `${Date.now().toString(36)}-${safe}`);
+    await fs.promises.writeFile(file, Buffer.from(base64, 'base64'));
+    return file;
+  });
+  ipcMain.handle('files:pickFiles', async () => {
+    const r = await dialog.showOpenDialog(getWin(), { properties: ['openFile', 'multiSelections'] });
+    return r.canceled ? [] : r.filePaths;
   });
 }
 

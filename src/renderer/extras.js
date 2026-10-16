@@ -154,6 +154,7 @@ const SHORTCUTS = [
   ['Move a node', 'Drag its header, or Alt+drag anywhere on it'],
   ['Select several', 'Ctrl+click, Shift+click a header, or Shift+drag a box on the canvas'],
   ['Select all', 'Ctrl+A'],
+  ['Prompter', 'P opens the composer: @ completes terminals, floors and files; paste images; Ctrl+Enter sends'],
   ['Connect nodes', 'Select a node, press C, click another node (Esc cancels)'],
   ['Remove a connection', 'Hover the rope and click ×'],
   ['Tidy', 'T arranges the selection, or all nodes'],
