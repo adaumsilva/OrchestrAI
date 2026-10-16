@@ -227,11 +227,54 @@ async function workspaceDialog() {
           async onclick() {
             const r = await call('data:import');
             if (r.error) return alertModal('Import failed', r.error);
-            if (r.data) { closeModal(); replaceWorkspace(r.data); }
+            if (r.floor) { closeModal(); addImportedFloor(r); }
+            else if (r.data) { closeModal(); replaceWorkspace(r.data); }
           },
         }, 'Import…'),
+        h('button', { title: 'Add a workspace saved by Maestri as a new floor', onclick: () => { closeModal(); maestriImportDialog(); } }, 'Import from Maestri…'),
         h('button', { onclick: () => call('data:revealBackups') }, 'Open backups folder')),
       h('div', { class: 'muted' }, 'Restore a backup (click to restore):'), list),
+    actions: [{ label: 'Close', primary: true, onClick: (c) => c() }],
+  });
+}
+
+// Zoom out (never in) and pan so every node of the floor is visible and centered.
+function fitFloor(f) {
+  if (!f.nodes.length) return;
+  const r = viewport.getBoundingClientRect();
+  const x0 = Math.min(...f.nodes.map((n) => n.x)), y0 = Math.min(...f.nodes.map((n) => n.y));
+  const x1 = Math.max(...f.nodes.map((n) => n.x + n.w)), y1 = Math.max(...f.nodes.map((n) => n.y + n.h));
+  const pad = 40;
+  const zoom = Math.max(0.1, Math.min(1, (r.width - pad * 2) / (x1 - x0), (r.height - pad * 2) / (y1 - y0)));
+  f.view = { zoom, x: (r.width - (x1 - x0) * zoom) / 2 - x0 * zoom, y: (r.height - (y1 - y0) * zoom) / 2 - y0 * zoom };
+  applyView(f);
+  save();
+}
+
+function addImportedFloor(r) {
+  state.floors.push(r.floor);
+  mountFloor(r.floor);
+  switchFloor(r.floor.id);
+  fitFloor(r.floor);
+  const skipped = Object.entries(r.skipped).map(([k, n]) => `${n} ${k}`).join(', ');
+  if (skipped) alertModal('Imported', `Skipped items with no equivalent: ${skipped}.`);
+}
+
+// Maestri workspaces are added as new floors, so nothing existing is replaced.
+async function maestriImportDialog() {
+  const { dir, workspaces } = await call('maestri:list');
+  const pick = async (w) => {
+    const r = await call('maestri:convert', w.id);
+    if (r.error) return alertModal('Import failed', r.error);
+    closeModal();
+    addImportedFloor(r);
+  };
+  modal({
+    title: 'Import from Maestri',
+    content: h('div', { style: 'display:flex;flex-direction:column;gap:8px' },
+      h('div', { class: 'muted' }, workspaces.length ? `Found in ${dir}. Terminals keep their command and folder but start fresh; chat history is not imported.` : `No Maestri workspaces found in ${dir}.`),
+      ...workspaces.map((w) => h('div', { class: 'change', onclick: () => pick(w) },
+        h('span', {}, w.name), h('span', { class: 'muted', style: 'margin-left:auto' }, `${w.nodes} items`)))),
     actions: [{ label: 'Close', primary: true, onClick: (c) => c() }],
   });
 }

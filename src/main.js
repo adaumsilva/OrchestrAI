@@ -157,6 +157,7 @@ data.register(ipcMain, getWin);
 shells.register(ipcMain, require('electron').shell);
 ipcMain.on('pty:killAll', () => { for (const p of ptys.values()) p.kill(); ptys.clear(); });
 
+require('./services/maestri').register(ipcMain);
 app.whenReady().then(async () => {
   await bridge.start(getWin, ipcMain);
   createWindow();

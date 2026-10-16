@@ -56,10 +56,14 @@ function register(ipcMain, getWin) {
   });
 
   ipcMain.handle('data:import', async () => {
-    const r = await dialog.showOpenDialog(getWin(), { title: 'Import workspace', properties: ['openFile'], filters: [{ name: 'OrchestrAI workspace', extensions: ['json'] }] });
+    const r = await dialog.showOpenDialog(getWin(), { title: 'Import workspace', properties: ['openFile'], filters: [{ name: 'Workspace files', extensions: ['json', 'maestri', 'maestribak'] }, { name: 'All files', extensions: ['*'] }] });
     if (r.canceled || !r.filePaths[0]) return { canceled: true };
     try {
-      return { data: validate(JSON.parse(fs.readFileSync(r.filePaths[0], 'utf8'))) };
+      const file = r.filePaths[0];
+      const head = fs.readFileSync(file).subarray(0, 4).toString('latin1');
+      // Maestri backups are zip archives; a bare Maestri workspace.json wraps its data in a "payload" key.
+      if (head.startsWith('PK') || /\.maestri(bak)?$/i.test(file) || JSON.parse(fs.readFileSync(file, 'utf8')).payload) return require('./maestri').convertFile(file);
+      return { data: validate(JSON.parse(fs.readFileSync(file, 'utf8'))) };
     } catch (e) {
       return { error: e.message };
     }
