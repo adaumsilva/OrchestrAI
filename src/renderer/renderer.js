@@ -12,7 +12,7 @@ function setSelection(f, ids) {
   ids.forEach((id) => selection.add(id));
   rt.get(f.id)?.live.forEach((e, id) => e.el.classList.toggle('selected', selection.has(id)));
 }
-const KIND_ICONS = { terminal: '❯_', note: '✎', files: '🗂', git: '⑂', chat: '💬', portal: '🌐', device: '📱', draw: '✏' };
+const KIND_ICONS = { terminal: '❯_', note: '✎', stack: '🗃', files: '🗂', git: '⑂', chat: '💬', portal: '🌐', device: '📱', draw: '✏' };
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 let saveTimer;
@@ -363,6 +363,10 @@ function mountNode(f, node) {
       }
       drawRopes(f);
     });
+    // Dropping a lone note or stack onto another one stacks them.
+    if (ids.length === 1 && (node.kind === 'note' || node.kind === 'stack')) {
+      addEventListener('mouseup', (up) => { if (Math.hypot(up.clientX - sx, up.clientY - sy) > 6) setTimeout(() => stackDrop(f, node, up), 0); }, { once: true });
+    }
   };
   // The whole header drags; double-click the title to rename it.
   head.addEventListener('contextmenu', (e) => {

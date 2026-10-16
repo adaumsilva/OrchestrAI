@@ -95,6 +95,7 @@ function build(p, noteText, entry = {}) {
   const ids = new Map(); // maestri node id -> new node id
   const nodes = [];
   const skipped = {};
+  const stacks = [];
   for (const n of maestriNodes) {
     const { kind, d } = unwrap(n.content);
     const [[x, y], [w, h]] = n.frame;
@@ -111,22 +112,32 @@ function build(p, noteText, entry = {}) {
       node = { ...base, kind: 'portal', title: d.name || 'Portal', data: { url: typeof url === 'string' ? url : 'https://www.google.com' } };
     } else if (kind === 'fileTree') {
       node = { ...base, kind: 'files', title: 'Files', data: { root: d.rootPath || d.currentPath || '', expanded: d.expandedPaths || [] } };
+    } else if (kind === 'noteStack') {
+      stacks.push({ n, d, base });
+      continue;
     } else {
       skipped[kind || 'unknown'] = (skipped[kind || 'unknown'] || 0) + 1; // note stacks are only groupings of notes already imported
       continue;
     }
-    // Notes inside a Maestri stack share one position; cascade them so each stays reachable.
-    const same = nodes.filter((o) => o.kind === 'note' && node.kind === 'note' && o.x - (o.dx || 0) === node.x && o.y - (o.dy || 0) === node.y).length;
-    if (same) { node.x += 36 * same; node.y += 36 * same; node.dx = 36 * same; node.dy = 36 * same; }
     ids.set(n.id, node.id);
     nodes.push(node);
   }
 
-  for (const n of nodes) { delete n.dx; delete n.dy; }
+  // A Maestri note stack becomes one stack node holding its member notes (in the stack's order).
+  for (const { n, d, base } of stacks) {
+    const members = (d.memberNodeIds || []).map((m) => nodes.find((x) => x.id === ids.get(m))).filter(Boolean);
+    if (!members.length) { skipped.noteStack = (skipped.noteStack || 0) + 1; continue; }
+    const front = members.find((m) => ids.get(d.frontNoteId) === m.id) || members[0];
+    const stack = { ...base, kind: 'stack', title: d.name || 'Stack', data: { notes: members.map((m) => ({ id: m.id, title: m.title, text: m.data.text })), front: front.id } };
+    for (const m of members) { ids.set([...ids].find(([, v]) => v === m.id)[0], stack.id); nodes.splice(nodes.indexOf(m), 1); }
+    ids.set(n.id, stack.id);
+    nodes.push(stack);
+  }
+
   const ropes = [];
   const link = (a, b) => {
     const A = ids.get(a), B = ids.get(b);
-    if (A && B) ropes.push({ id: uid(), a: A, b: B });
+    if (A && B && A !== B && !ropes.some((r) => (r.a === A && r.b === B) || (r.a === B && r.b === A))) ropes.push({ id: uid(), a: A, b: B });
   };
   for (const c of p.connections || []) link(c.terminalIdA, c.terminalIdB);
   for (const c of p.noteConnections || []) link(c.noteNodeId, c.terminalId);

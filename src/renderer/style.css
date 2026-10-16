@@ -281,3 +281,13 @@ webview { flex: 1; min-height: 0; background: #fff; border-radius: 6px; }
 @keyframes pulse { 50% { opacity: .45; } }
 .sheet-body > div { display: flex; flex-direction: column; gap: 16px; }
 .sheet-body > div > .sheet-field > .toggle-row { margin-bottom: 2px; }
+
+/* note stacks */
+.stack-body { padding: 0; }
+.stack-tabs { display: flex; gap: 2px; padding: 4px 4px 0; overflow-x: auto; flex: none; border-bottom: 1px solid var(--border); scrollbar-width: thin; }
+.stack-tab { padding: 3px 10px; border-radius: 6px 6px 0 0; color: var(--fg-muted); white-space: nowrap; max-width: 140px; overflow: hidden; text-overflow: ellipsis; cursor: pointer; outline: none; }
+.stack-tab:hover { background: var(--hover); }
+.stack-tab.front { background: var(--active); color: var(--fg); }
+.stack-tab[contenteditable=true] { text-overflow: clip; box-shadow: 0 0 0 2px var(--accent); cursor: text; }
+.stack-add { background: none; color: var(--fg-muted); padding: 0 8px; border-radius: 6px; }
+.stack-add:hover { background: var(--active); color: var(--fg); }
