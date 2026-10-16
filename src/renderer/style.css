@@ -337,3 +337,20 @@ webview { flex: 1; min-height: 0; background: #fff; border-radius: 6px; }
 .chip button { background: none; color: var(--fg-muted); padding: 0 6px; }
 .prompter-targets { display: flex; flex-wrap: wrap; gap: 4px 14px; }
 .prompter-targets label { display: flex; align-items: center; gap: 5px; }
+
+/* terminal chat face */
+.node-body.chat-face > .xterm { position: absolute; inset: 6px; visibility: hidden; pointer-events: none; }
+.node-body.chat-face > .find-bar { display: none; }
+.terminal-chat { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+.terminal-chat.hidden { display: none; }
+.terminal-chat .row select { flex: 1.2; min-width: 0; }
+.terminal-chat .chat-search { flex: 1; min-width: 0; }
+.terminal-chat .msgs { min-height: 0; }
+.terminal-chat .msgs.hidden { display: none; }
+.msg.tool { background: none; color: var(--fg-subtle); font-size: 11px; padding: 0 6px; align-self: flex-start; font-family: var(--mono); max-width: 100%; }
+.msg.focus { box-shadow: 0 0 0 2px var(--accent); }
+.msg mark, .chat-hit mark { background: #ffd60a66; color: inherit; border-radius: 3px; }
+.chat-older { align-self: center; background: none; color: var(--fg-muted); }
+.chat-hit { padding: 6px 8px; border-radius: 8px; cursor: pointer; border: 1px solid var(--border); }
+.chat-hit:hover { background: var(--hover); }
+.node-head button.unread::after { content: ''; display: inline-block; width: 7px; height: 7px; margin-left: 3px; border-radius: 50%; background: var(--accent); vertical-align: middle; }

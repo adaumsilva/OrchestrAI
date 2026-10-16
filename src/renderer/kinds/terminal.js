@@ -239,6 +239,27 @@ NodeKinds.terminal = {
     addButton('\u2315', 'Find (Ctrl+Shift+F)', openFind);
     addButton('\u27F3', 'Restart the process', restart);
 
+    // ---------- chat face (the agent's transcript as a conversation; the process keeps running underneath) ----------
+    const chatFace = createChatFace({
+      node, save,
+      cwd: () => node.data.cwd || cwd() || '',
+      sendText: (t) => entry.api.send(t.includes('\n') ? `\x1b[200~${t}\x1b[201~` : t),
+      interrupt: () => call('pty:send', node.id, '\x03'),
+    });
+    body.append(chatFace.el);
+    const faceBtn = addButton('\u{1F4AC}', 'Switch between the Terminal and Chat faces', () => setFace(node.data.face === 'chat' ? 'terminal' : 'chat'));
+    chatFace.onUnread((u) => faceBtn.classList.toggle('unread', u));
+    function setFace(f, persist = true) {
+      node.data.face = f;
+      body.classList.toggle('chat-face', f === 'chat');
+      faceBtn.classList.toggle('active', f === 'chat');
+      chatFace.show(f === 'chat');
+      if (f !== 'chat') { try { fit.fit(); api.ptyResize(node.id, term.cols, term.rows); } catch {} term.focus(); }
+      if (persist) save();
+    }
+    entry.api.setFace = setFace;
+    if (node.data.face === 'chat') setFace('chat', false);
+
     body.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       popupMenu(e.clientX, e.clientY, [
@@ -288,7 +309,7 @@ NodeKinds.terminal = {
     return () => {
       prefersDark.removeEventListener('change', onScheme);
       clearInterval(launchTimer); clearTimeout(quietTimer);
-      ro.disconnect(); offData(); offExit();
+      ro.disconnect(); offData(); offExit(); chatFace.destroy();
       try { state.scrollback[node.id] = serialize.serialize({ scrollback: 300 }); } catch {}
       api.ptyKill(node.id);
       // The node is being closed (not the app), so its persistent session ends with it.
