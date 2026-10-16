@@ -8,15 +8,17 @@ const TERMINAL_DEFAULTS = {
   cursorStyle: 'block',
   cursorBlink: true,
   scrollback: 5000,
-  theme: 'system',
+  theme: 'system', // 'system' follows the light/dark pair below; also a built-in name or 'custom:<id>'
+  themeLight: 'light',
+  themeDark: 'dark',
   copyOnSelect: false,
   windowsKeys: true, // Ctrl+C copies when text is selected, Ctrl+V pastes
   restoreScrollback: true,
+  persistSessions: true, // allow terminals to keep running in tmux after the app quits
+  tmuxSocket: 'orchestrai', // tmux -L socket name shared by all persistent terminals
   profileId: '', // '' = platform default shell
   customProfiles: [], // [{ id, label, command, args }]
 };
-
-const TERMINAL_THEME_NAMES = [['system', 'Follow system'], ['dark', 'Dark'], ['light', 'Light'], ['midnight', 'Midnight'], ['solarized', 'Solarized dark']];
 
 // Quick-start presets shown when creating a terminal (up to MAX_ACTIVE_PRESETS are active), and starter roles.
 const MAX_ACTIVE_PRESETS = 5;
@@ -38,6 +40,7 @@ function normalizeSettings() {
   state.settings = state.settings || {};
   state.settings.terminal = { ...TERMINAL_DEFAULTS, ...(state.settings.terminal || {}) };
   if (!Array.isArray(state.settings.terminal.customProfiles)) state.settings.terminal.customProfiles = [];
+  state.settings.customThemes = Array.isArray(state.settings.customThemes) ? state.settings.customThemes : []; // [{ id, name, colors }]
   state.settings.presets = Array.isArray(state.settings.presets) ? state.settings.presets : DEFAULT_PRESETS.map((p) => ({ ...p }));
   state.settings.roles = Array.isArray(state.settings.roles) ? state.settings.roles : DEFAULT_ROLES.map((r) => ({ ...r }));
   state.scrollback = state.scrollback || {};
@@ -105,6 +108,54 @@ const MAESTRO_PRIMER = `You are the Maestro of this OrchestrAI canvas: a conduct
   orchestrai roles                       - list available roles
 Delegate work to other agents, check on them with read, and report back to the user when they finish.`;
 
+// ---------- persistent sessions (tmux) ----------
+const shq = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`;
+
+// Where a persistent terminal's tmux session lives, or null when the terminal does not keep running after quit
+// (not requested, disabled in Settings, or running somewhere tmux cannot be used, such as Docker or a custom profile).
+function tmuxTarget(node) {
+  const d = node.data, s = terminalSettings();
+  if (!d.persist || s.persistSessions === false) return null;
+  const runs = d.runsOn || { kind: d.profile ? 'legacy' : 'default' };
+  const base = {
+    socket: (s.tmuxSocket || 'orchestrai').replace(/[^\w.-]/g, '') || 'orchestrai',
+    session: `orchestrai-${String(node.id).replace(/[^\w-]/g, '')}`.slice(0, 64),
+  };
+  switch (runs.kind) {
+    case 'default': case 'local': return { ...base, kind: 'local' };
+    case 'wsl': return { ...base, kind: 'wsl', distro: runs.distro, user: runs.user || '' };
+    case 'ssh': return { ...base, kind: 'ssh', host: runs.host, user: runs.user || '', port: runs.port || '' };
+    default: return null;
+  }
+}
+
+// The arguments that attach to the terminal's tmux session, creating it on first use.
+const tmuxAttachArgs = (t, shellArgv = [], dir = '') =>
+  ['-L', t.socket, 'new-session', '-A', '-s', t.session, ...(dir ? ['-c', dir] : []), ...shellArgv];
+
+// Turns a plain launch into one that runs inside tmux. Returns the launch unchanged, plus a notice, when tmux cannot be used.
+async function persistLaunch(node, launch, cwdOverride) {
+  const t = tmuxTarget(node);
+  if (!t) return launch;
+  const p = launch.profile;
+  if (t.kind === 'local' && (p?.group === 'WSL' || p?.group === 'Docker' || p?.group === 'SSH')) return { ...launch, notice: 'Keep running after quit works with shells, WSL and SSH; this profile runs normally.' };
+  const st = await call('app:tmuxStatus', t);
+  const where = t.kind === 'wsl' ? `WSL ${t.distro}` : t.kind === 'ssh' ? t.host : 'this computer';
+  if (!st.available) return { ...launch, notice: `Keep running after quit is unavailable: ${st.error || 'tmux not found'} (${where}). Install tmux there, or turn the option off. Starting without it.` };
+  const reattach = { tmux: t, reattached: st.exists };
+  if (t.kind === 'wsl') {
+    return { ...launch, ...reattach, typed: st.exists ? '' : launch.typed, profile: { ...p, args: [...p.args, '--exec', 'tmux', ...tmuxAttachArgs(t)] } };
+  }
+  if (t.kind === 'ssh') {
+    const inner = launch.sshCommand || '';
+    const remote = ['tmux', ...tmuxAttachArgs(t, inner ? [inner] : [], cwdOverride)].map(shq).join(' ');
+    const args = [...(launch.sshPre || []), '-t', launch.sshTarget, remote];
+    return { ...launch, ...reattach, profile: { ...p, args } };
+  }
+  const shell = p ? [p.command, ...(p.args || [])] : [];
+  return { ...launch, ...reattach, typed: st.exists ? '' : launch.typed, profile: { id: `tmux:${p?.id || 'default'}`, label: p?.label || 'Shell', group: 'tmux', command: 'tmux', args: tmuxAttachArgs(t, shell) } };
+}
+
 // Turns a terminal node's "Runs on" choice into a concrete launch: the profile to spawn, and the text to type
 // into the shell once it is ready (the Command field). Remote kinds (ssh, docker) carry the command in their args.
 async function resolveLaunch(node) {
@@ -116,17 +167,18 @@ async function resolveLaunch(node) {
   switch (runs.kind) {
     case 'local': {
       const hit = runs.shellId && detected.find((p) => p.id === runs.shellId);
-      return { profile: hit || fallback, typed: command, remote: false };
+      return persistLaunch(node, { profile: hit || fallback, typed: command, remote: false }, cwdOverride);
     }
     case 'wsl': {
       const args = ['-d', runs.distro, ...(runs.user ? ['-u', runs.user] : [])];
-      return { profile: { id: `wsl:${runs.distro}`, label: `WSL: ${runs.distro}`, group: 'WSL', command: 'wsl.exe', args, cdFlag: true }, typed: command, remote: false };
+      return persistLaunch(node, { profile: { id: `wsl:${runs.distro}`, label: `WSL: ${runs.distro}`, group: 'WSL', command: 'wsl.exe', args, cdFlag: true }, typed: command, remote: false }, cwdOverride);
     }
     case 'ssh': {
       const target = (runs.user ? `${runs.user}@` : '') + runs.host;
       const remoteCmd = cwdOverride ? `cd "${cwdOverride}" && ${command || 'exec "$SHELL" -l'}` : command;
-      const args = [...(runs.port ? ['-p', String(runs.port)] : []), ...(remoteCmd ? ['-t'] : []), target, ...(remoteCmd ? [remoteCmd] : [])];
-      return { profile: { id: `ssh:${target}`, label: `SSH: ${target}`, group: 'SSH', command: 'ssh', args }, typed: '', remote: true };
+      const pre = runs.port ? ['-p', String(runs.port)] : [];
+      const args = [...pre, ...(remoteCmd ? ['-t'] : []), target, ...(remoteCmd ? [remoteCmd] : [])];
+      return persistLaunch(node, { profile: { id: `ssh:${target}`, label: `SSH: ${target}`, group: 'SSH', command: 'ssh', args }, typed: '', remote: true, sshPre: pre, sshTarget: target, sshCommand: command }, cwdOverride);
     }
     case 'docker': {
       const inner = command || 'command -v bash >/dev/null 2>&1 && exec bash || exec sh';
@@ -134,7 +186,7 @@ async function resolveLaunch(node) {
       return { profile: { id: `docker:${runs.container}`, label: `Docker: ${runs.container}`, group: 'Docker', command: 'docker', args }, typed: '', remote: true };
     }
     default:
-      return { profile: await resolveProfile(node), typed: command, remote: false };
+      return persistLaunch(node, { profile: await resolveProfile(node), typed: command, remote: false }, cwdOverride);
   }
 }
 
@@ -192,7 +244,66 @@ async function settingsDialog() {
   const num = (key, min, max, step = 1) => h('input', { type: 'number', min, max, step, value: s[key], style: 'width:90px', onchange: (e) => { const v = parseFloat(e.target.value); if (!Number.isNaN(v)) s[key] = Math.min(max, Math.max(min, v)); } });
   const check = (key, label) => h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: s[key], onchange: (e) => { s[key] = e.target.checked; } }), label);
   const select = (key, options) => h('select', { onchange: (e) => { s[key] = e.target.value; } }, options.map(([v, l]) => h('option', { value: v, selected: s[key] === v }, l)));
-  const font = h('input', { value: s.fontFamily, onchange: (e) => { s.fontFamily = e.target.value.trim() || TERMINAL_DEFAULTS.fontFamily; } });
+  const font = fontPicker({ value: s.fontFamily, placeholder: TERMINAL_DEFAULTS.fontFamily, onChange: (v) => { s.fontFamily = v || TERMINAL_DEFAULTS.fontFamily; } }).root;
+
+  // Custom themes are edited on a copy and written back on Save.
+  const themes = customThemes().map((t) => ({ ...t, colors: { ...t.colors } }));
+  const themeSelects = [];
+  const themeSelect = (key, extra = []) => {
+    const el = h('select', { onchange: (e) => { s[key] = e.target.value; } });
+    el.fill = () => el.replaceChildren(...[...extra, ...BUILTIN_THEMES, ...themes.map((t) => [`custom:${t.id}`, t.name || 'Custom theme'])].map(([v, l]) => h('option', { value: v, selected: s[key] === v }, l)));
+    themeSelects.push(el);
+    el.fill();
+    return el;
+  };
+  const themeRows = h('div', { style: 'display:flex;flex-direction:column;gap:8px' });
+  const themeError = h('div', { class: 'err hidden' });
+  const themesToSave = () => themes.map(({ open, ...rest }) => rest);
+  const renderThemes = () => {
+    themeRows.replaceChildren(...themes.map((t, i) => {
+      const shown = { ...paletteFromColors(t.colors), selection: hex6(t.colors.selection) || '#0a84ff' };
+      const swatch = (k) => h('label', { class: 'theme-color', title: THEME_LABELS[k] || k },
+        h('input', { type: 'color', value: hex6(t.colors[k]) || hex6(shown[k]) || '#000000', oninput: (e) => { t.colors[k] = e.target.value; } }),
+        h('span', {}, THEME_LABELS[k] || k));
+      const remove = () => {
+        themes.splice(i, 1);
+        const fallback = { theme: 'system', themeLight: 'light', themeDark: 'dark' };
+        for (const key of Object.keys(fallback)) if (s[key] === `custom:${t.id}`) s[key] = fallback[key];
+        renderThemes();
+      };
+      return h('details', { class: 'theme-card', open: t.open, ontoggle: (e) => { t.open = e.target.open; } },
+        h('summary', {}, t.name || 'Custom theme'),
+        h('div', { class: 'row', style: 'margin:6px 0' },
+          h('input', { value: t.name, placeholder: 'Theme name', onchange: (e) => { t.name = e.target.value.trim(); renderThemes(); } }),
+          h('button', { class: 'danger', title: 'Delete theme', onclick: remove }, '✕')),
+        h('div', { class: 'theme-grid' }, THEME_KEYS.map(swatch)));
+    }));
+    if (!themes.length) themeRows.append(h('div', { class: 'muted' }, 'None yet. Add one, or import a theme from JSON.'));
+    themeSelects.forEach((x) => x.fill());
+  };
+  const newTheme = () => { themes.push({ id: `t-${uid()}`, name: 'My theme', colors: { ...TERMINAL_PALETTES.dark, selection: '#0a84ff' }, open: true }); renderThemes(); };
+  const importTheme = () => {
+    const box = h('textarea', { rows: 8, placeholder: 'Paste an xterm.js / VS Code style JSON theme or a Windows Terminal color scheme', style: 'width:100%' });
+    modal({
+      title: 'Import theme',
+      content: h('div', { style: 'display:flex;flex-direction:column;gap:8px' }, box, themeError),
+      actions: [
+        { label: 'Cancel', onClick: () => settingsDialog() },
+        {
+          label: 'Import', primary: true, onClick: () => {
+            try {
+              const t = parseThemeText(box.value);
+              themes.push({ id: `t-${uid()}`, name: t.name || 'Imported theme', colors: t.colors });
+              state.settings.customThemes = themesToSave();
+              save();
+              settingsDialog();
+            } catch (err) { themeError.textContent = err.message; themeError.classList.remove('hidden'); }
+          },
+        },
+      ],
+    });
+  };
+  renderThemes();
 
   const profileSelect = h('select', { onchange: (e) => { s.profileId = e.target.value; } });
   const refreshProfiles = () => {
@@ -237,13 +348,21 @@ async function settingsDialog() {
       field('Font size', num('fontSize', 8, 32)),
       field('Line height', num('lineHeight', 1, 2, 0.05)),
       field('Cursor', select('cursorStyle', [['block', 'Block'], ['underline', 'Underline'], ['bar', 'Bar']])),
-      field('Theme', select('theme', TERMINAL_THEME_NAMES)),
+      field('Theme', themeSelect('theme', [['system', 'Follow system']])),
+      field('Light theme', themeSelect('themeLight')),
+      field('Dark theme', themeSelect('themeDark')),
+      h('div', { class: 'muted' }, '“Follow system” switches between the light and dark theme above with your OS appearance.'),
       field('Scrollback (lines)', num('scrollback', 500, 100000, 500)),
       field('Default profile', profileSelect),
       check('cursorBlink', 'Blinking cursor'),
       check('copyOnSelect', 'Copy text as soon as it is selected'),
       check('windowsKeys', 'Ctrl+C copies when text is selected, Ctrl+V pastes (Ctrl+Shift+C/V always work)'),
       check('restoreScrollback', 'Restore each terminal’s recent output after restarting the app'),
+      check('persistSessions', 'Allow terminals to keep running after the app quits (uses tmux)'),
+      field('tmux socket name', h('input', { value: s.tmuxSocket, placeholder: 'orchestrai', onchange: (e) => { s.tmuxSocket = e.target.value.replace(/[^\w.-]/g, '') || 'orchestrai'; e.target.value = s.tmuxSocket; } })),
+      h('div', { class: 'muted', style: 'margin-top:8px' }, 'Custom themes'),
+      themeRows,
+      h('div', { class: 'row' }, h('button', { onclick: newTheme }, '+ Add theme'), h('button', { onclick: importTheme }, 'Import…')),
       h('div', { class: 'muted', style: 'margin-top:8px' }, 'Quick start presets'),
       presetNote, presetRows,
       h('div', {}, h('button', { onclick: () => { presets.push({ id: `preset-${uid()}`, name: 'New preset', command: '', icon: '○', active: presets.filter((p) => p.active).length < MAX_ACTIVE_PRESETS }); renderPresets(); } }, '+ Add preset')),
@@ -256,6 +375,7 @@ async function settingsDialog() {
         label: 'Save', primary: true, onClick: (c) => {
           s.customProfiles = s.customProfiles.filter((p) => p.command);
           state.settings.terminal = s;
+          state.settings.customThemes = themesToSave();
           state.settings.presets = presets.filter((p) => p.name.trim());
           save();
           applyTerminalSettings();

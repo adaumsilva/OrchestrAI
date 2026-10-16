@@ -3,7 +3,7 @@
 
 const TERMINAL_COLORS = [['Blue', '#0a84ff'], ['Red', '#ff453a'], ['Green', '#30d158'], ['Orange', '#ff9f0a'], ['Purple', '#bf5af2'], ['Pink', '#ff375f'], ['Cyan', '#64d2ff'], ['Yellow', '#ffd60a']];
 const ICON_CHOICES = ['\u273B', '\u25CD', '\u2726', '\u25AF', '\u276F_', '\u2699', '\u2605', '\u26A1', '\u{1F9EA}', '\u{1F9ED}', '\u{1F6E0}', '\u{1F50D}'];
-const THEME_CHOICES = [['', 'Settings default'], ...TERMINAL_THEME_NAMES];
+const themeOptions = () => [['', 'Settings default'], ['system', 'Follow system'], ...themeChoices()];
 
 const switchEl = (checked, onChange) => {
   const input = h('input', { type: 'checkbox', checked });
@@ -29,6 +29,7 @@ async function terminalDialog({ mode, floor, node }) {
     cwd: d.cwd || (isNew || !d.cwd ? floor.dir || '' : ''),
     monitor: isNew ? true : !!d.monitor,
     maestro: !!d.maestro,
+    persist: !!d.persist,
     icon: d.icon || '',
     color: d.color || '',
     theme: d.theme || '',
@@ -74,6 +75,14 @@ async function terminalDialog({ mode, floor, node }) {
     }
   }
 
+  // "Keep running after quit" needs tmux, so it is offered for Local, WSL and SSH only.
+  function persistRow() {
+    const k = draft.runsOn.kind;
+    if (!['default', 'local', 'wsl', 'ssh', 'legacy'].includes(k)) return null;
+    if (terminalSettings().persistSessions === false) return h('div', { class: 'sheet-hint' }, 'Keep running after quit is turned off in Settings.');
+    return toggleRow('Keep running after quit', k === 'ssh' ? 'Runs inside tmux on the remote host, so the session survives disconnects and app restarts. Needs tmux there.' : 'Runs inside tmux; the app reattaches to it on the next start. Needs tmux on the machine. Closing the terminal ends the session.', switchEl(draft.persist, (v) => { draft.persist = v; }));
+  }
+
   function detailsTab() {
     const nameInput = h('input', { placeholder: 'Terminal name', value: draft.name, oninput: (e) => { draft.name = e.target.value; } });
     const commandInput = h('input', { class: 'mono-input', placeholder: 'e.g. claude, codex, or leave empty for shell', value: draft.command, oninput: (e) => { draft.command = e.target.value; } });
@@ -102,6 +111,7 @@ async function terminalDialog({ mode, floor, node }) {
       h('div', { class: 'sheet-field' }, h('div', { class: 'toggle-row' }, h('div', { class: 'sheet-label' }, 'Runs on'), runs), runsOnFields() || (draft.runsOn.kind === 'default' ? h('div', { class: 'sheet-hint' }, fallback.label + (terminalSettings().profileId ? ' (changed in Settings)' : '')) : null)),
       sheetField('Working Directory', h('div', { class: 'row' }, cwdInput, browse)),
       toggleRow('Monitor Activity', 'Detect terminal output and notify you when work finishes.', switchEl(draft.monitor, (v) => { draft.monitor = v; })),
+      persistRow(),
       toggleRow(h('span', {}, 'Maestro ', infoBtn), 'Promotes this terminal to a conductor that can direct the rest of the canvas.', switchEl(draft.maestro, (v) => { draft.maestro = v; })),
       maestroInfo);
   }
@@ -129,10 +139,11 @@ async function terminalDialog({ mode, floor, node }) {
       ...TERMINAL_COLORS.map(([n, c]) => h('button', { class: 'color-choice', title: n, 'data-color': c, style: `background:${c}`, onclick: () => { draft.color = c; paintSwatches(); paint(); } })),
     ];
     const paintSwatches = () => swatches.forEach((b) => b.classList.toggle('on', (b.dataset.color || '') === draft.color));
-    const theme = h('select', { onchange: (e) => { draft.theme = e.target.value; paint(); } }, THEME_CHOICES.map(([v, l]) => h('option', { value: v, selected: draft.theme === v }, l)));
-    const font = h('input', { placeholder: terminalSettings().fontFamily, value: draft.fontFamily, oninput: (e) => { draft.fontFamily = e.target.value.trim(); paint(); } });
+    const theme = h('select', { onchange: (e) => { draft.theme = e.target.value; paint(); } }, themeOptions().map(([v, l]) => h('option', { value: v, selected: draft.theme === v }, l)));
+    const fp = fontPicker({ value: draft.fontFamily, placeholder: terminalSettings().fontFamily, onChange: (v) => { draft.fontFamily = v; paint(); } });
+    const font = fp.root;
     const size = h('input', { type: 'number', min: 8, max: 32, placeholder: String(terminalSettings().fontSize), value: draft.fontSize || '', style: 'width:80px', oninput: (e) => { draft.fontSize = Math.min(32, Math.max(0, parseInt(e.target.value, 10) || 0)); paint(); } });
-    const reset = h('button', { class: 'sheet-btn', onclick: () => { draft.fontFamily = ''; draft.fontSize = 0; font.value = ''; size.value = ''; paint(); } }, 'Use default');
+    const reset = h('button', { class: 'sheet-btn', onclick: () => { draft.fontFamily = ''; draft.fontSize = 0; fp.input.value = ''; size.value = ''; paint(); } }, 'Use default');
     paintIcons(); paintSwatches(); paint();
     return h('div', {},
       sheetField('Icon', h('div', { class: 'icon-row' }, iconInput, iconButtons)),
@@ -218,7 +229,7 @@ async function terminalDialog({ mode, floor, node }) {
       command,
       runsOn: r.kind === 'default' ? undefined : { ...r, host: r.host?.trim(), user: r.user?.trim(), container: r.container?.trim() },
       cwd: draft.cwd.trim() === (floor.dir || '') ? '' : draft.cwd.trim(),
-      monitor: draft.monitor, maestro: draft.maestro,
+      monitor: draft.monitor, maestro: draft.maestro, persist: draft.persist,
       icon: draft.icon, color: draft.color, theme: draft.theme, fontFamily: draft.fontFamily, fontSize: draft.fontSize || 0, roleId: draft.roleId,
     };
     closeModal();
@@ -226,8 +237,10 @@ async function terminalDialog({ mode, floor, node }) {
       addNode('terminal', { title, data }, floor);
       return;
     }
-    const launchKey = (x) => JSON.stringify([x.command || '', x.runsOn || null, x.cwd || '', !!x.maestro, x.roleId || '']);
+    const launchKey = (x) => JSON.stringify([x.command || '', x.runsOn || null, x.cwd || '', !!x.maestro, x.roleId || '', !!x.persist]);
     const launchChanged = launchKey(node.data) !== launchKey(data);
+    // Turning persistence off (or changing where it runs) leaves a tmux session behind; end it.
+    const oldTarget = tmuxTarget(node);
     const legacyProfile = node.data.profile;
     node.data = { ...data, profile: r.kind === 'default' ? legacyProfile : undefined, runsOn: data.runsOn };
     node.title = title;
@@ -235,7 +248,10 @@ async function terminalDialog({ mode, floor, node }) {
     entry?.el.querySelector('.title') && (entry.el.querySelector('.title').textContent = title);
     entry?.api.applyAppearance?.();
     save();
-    if (launchChanged && entry?.api.restart && await confirmModal('Restart terminal?', 'The command, environment, directory or role changed. Restart this terminal to apply it?', 'Restart')) entry.api.restart();
+    if (launchChanged && entry?.api.restart && await confirmModal('Restart terminal?', 'The command, environment, directory or role changed. Restart this terminal to apply it?', 'Restart')) {
+      if (oldTarget) await call('app:tmuxKill', oldTarget);
+      entry.api.restart();
+    }
   }
 
   const root = document.getElementById('modal-root');

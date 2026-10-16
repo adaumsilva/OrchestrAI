@@ -1,29 +1,3 @@
-const TERMINAL_PALETTES = {
-  dark: {
-    background: '#1e1e1e', foreground: '#f5f5f7', cursor: '#0a84ff', cursorAccent: '#1e1e1e', selectionBackground: '#0a84ff4d',
-    black: '#3a3a3c', red: '#ff453a', green: '#32d74b', yellow: '#ffd60a', blue: '#0a84ff', magenta: '#bf5af2', cyan: '#64d2ff', white: '#d1d1d6',
-    brightBlack: '#636366', brightRed: '#ff6961', brightGreen: '#5ee07a', brightYellow: '#ffe066', brightBlue: '#409cff', brightMagenta: '#da8fff', brightCyan: '#8ae0ff', brightWhite: '#ffffff',
-  },
-  light: {
-    background: '#ffffff', foreground: '#1d1d1f', cursor: '#007aff', cursorAccent: '#ffffff', selectionBackground: '#007aff33',
-    black: '#1d1d1f', red: '#d70015', green: '#248a3d', yellow: '#b25000', blue: '#0040dd', magenta: '#8944ab', cyan: '#0071a4', white: '#6e6e73',
-    brightBlack: '#8e8e93', brightRed: '#ff3b30', brightGreen: '#30d158', brightYellow: '#c93400', brightBlue: '#007aff', brightMagenta: '#af52de', brightCyan: '#32ade6', brightWhite: '#3a3a3c',
-  },
-  midnight: {
-    background: '#0b0f1a', foreground: '#c8d3f5', cursor: '#82aaff', cursorAccent: '#0b0f1a', selectionBackground: '#2f3b6a99',
-    black: '#1b2036', red: '#ff757f', green: '#c3e88d', yellow: '#ffc777', blue: '#82aaff', magenta: '#c099ff', cyan: '#86e1fc', white: '#c8d3f5',
-    brightBlack: '#444a73', brightRed: '#ff98a4', brightGreen: '#c7fb6d', brightYellow: '#ffd89e', brightBlue: '#9bb8ff', brightMagenta: '#d3b5ff', brightCyan: '#a4ecff', brightWhite: '#ffffff',
-  },
-  solarized: {
-    background: '#002b36', foreground: '#93a1a1', cursor: '#93a1a1', cursorAccent: '#002b36', selectionBackground: '#073642',
-    black: '#073642', red: '#dc322f', green: '#859900', yellow: '#b58900', blue: '#268bd2', magenta: '#d33682', cyan: '#2aa198', white: '#eee8d5',
-    brightBlack: '#586e75', brightRed: '#cb4b16', brightGreen: '#586e75', brightYellow: '#657b83', brightBlue: '#839496', brightMagenta: '#6c71c4', brightCyan: '#93a1a1', brightWhite: '#fdf6e3',
-  },
-};
-
-const prefersDark = matchMedia('(prefers-color-scheme: dark)');
-const terminalTheme = (name) => TERMINAL_PALETTES[name === 'system' || !TERMINAL_PALETTES[name] ? (prefersDark.matches ? 'dark' : 'light') : name];
-
 NodeKinds.terminal = {
   label: 'Terminal', w: 560, h: 340,
   mount({ node, body, cwd, entry, addButton, save, floor, el, head }) {
@@ -115,11 +89,14 @@ NodeKinds.terminal = {
     let profileBtn;
 
     // ---------- status, activity monitoring and attention ----------
-    const STATUS_LABELS = { idle: 'Idle', starting: 'Starting', running: 'Running', exited: 'Exited', error: 'Error' };
+    const STATUS_LABELS = { restored: 'Restored', idle: 'Idle', starting: 'Starting', running: 'Running', exited: 'Exited', error: 'Error' };
     const dot = h('span', { class: 'status-dot', 'data-status': 'starting', title: 'Starting' });
     head.querySelector('.title').before(dot);
     let status = 'starting';
-    const setStatus = (s) => { status = s; dot.dataset.status = s; dot.title = STATUS_LABELS[s] + (el.classList.contains('attention') ? ' • needs attention' : ''); };
+    const setStatus = (s) => {
+      status = s; dot.dataset.status = s; dot.title = STATUS_LABELS[s] + (el.classList.contains('attention') ? ' • needs attention' : '');
+      dispatchEvent(new Event('terminal-status'));
+    };
     let burstStart = 0, burstBytes = 0, lastChunk = 0, quietTimer = null;
     const clearAttention = () => { el.classList.remove('attention'); setStatus(status); };
     const flagFinished = () => {
@@ -156,11 +133,15 @@ NodeKinds.terminal = {
       if (node.data.maestro) parts.push(MAESTRO_PRIMER);
       return parts.join('\n\n');
     };
+    const screenTail = () => { const b = term.buffer.active; const out = []; for (let i = b.baseY; i < b.baseY + term.rows; i++) out.push(b.getLine(i)?.translateToString(true) ?? ''); return out.join('\n'); };
     let launchTimer = null;
     const stopLaunch = () => { launch = null; clearInterval(launchTimer); };
     const launchTick = () => {
       if (!launch || exited) { stopLaunch(); return; }
       const quiet = Date.now() - lastChunk;
+      // Never type into a confirmation menu (Claude's "trust this folder", for one): Enter would pick its default.
+      // Wait for the user to answer it, and give the launch a fresh time budget.
+      if (/Enter to confirm|trust this folder|Do you trust/i.test(screenTail())) { launch.started = Date.now(); return; }
       if (Date.now() - launch.started > 45000) { stopLaunch(); return; }
       if (launch.stage === 'shell') {
         if (lastChunk >= launch.started && quiet > 700) {
@@ -176,18 +157,28 @@ NodeKinds.terminal = {
       }
     };
 
+    let replayed = false;
     async function start() {
       exited = false;
       setStatus('starting');
-      const { profile, typed, remote } = await resolveLaunch(node);
+      const { profile, typed, remote, notice, reattached } = await resolveLaunch(node);
       const label = profile?.label || (await loadProfiles()).fallback.label;
       if (profileBtn) profileBtn.textContent = label + ' ▾';
+      // Output saved from the previous run is shown once; a reattached tmux session redraws its own screen.
+      if (!replayed) {
+        replayed = true;
+        const saved = S().restoreScrollback && !reattached && state.scrollback?.[node.id];
+        // Scroll the restored text out of the viewport so the new shell's startup screen-clear cannot erase it.
+        if (saved) term.write(saved + '\r\n\x1b[2m— previous session —\x1b[0m\r\n' + '\r\n'.repeat(term.rows));
+      }
+      if (notice) term.write(`\x1b[33m${notice}\x1b[0m\r\n`);
       const startDir = node.data.cwd || cwd();
       const r = await call('pty:spawn', {
         id: node.id, cols: term.cols, rows: term.rows, profile,
         cwd: remote ? undefined : startDir,
         maestro: !!node.data.maestro && !remote && !(profile?.cdFlag),
       });
+      if (r.ok && reattached) { setStatus('restored'); term.write('\x1b[2m— reattached to the running tmux session —\x1b[0m\r\n'); }
       if (!r.ok) {
         exited = true;
         setStatus('error');
@@ -196,14 +187,18 @@ NodeKinds.terminal = {
       }
       lastChunk = 0;
       stopLaunch();
-      const prime = (node.data.command || '').trim() ? priming() : '';
+      // A reattached session already has its agent running; do not type the command or role again.
+      const prime = !reattached && (node.data.command || '').trim() ? priming() : '';
       launch = (typed || prime) ? { stage: typed ? 'shell' : 'agent', typed, prime, started: Date.now(), typedAt: Date.now() } : null;
       if (launch) launchTimer = setInterval(launchTick, 300);
     }
-    function restart() {
+    async function restart() {
       api.ptyKill(node.id);
       stopLaunch();
       term.write('\r\n\x1b[2m— restarting —\x1b[0m\r\n');
+      // Restart means a fresh process, so a persistent terminal's old tmux session must go first.
+      const t = tmuxTarget(node);
+      if (t) await call('app:tmuxKill', t);
       start();
     }
     term.onData((d) => {
@@ -230,9 +225,6 @@ NodeKinds.terminal = {
     term.open(body);
     body.append(findBar);
     fit.fit();
-    const saved = S().restoreScrollback && state.scrollback?.[node.id];
-    // Scroll the restored text out of the viewport so the new shell's startup screen-clear cannot erase it.
-    if (saved) term.write(saved + '\r\n\x1b[2m— previous session —\x1b[0m\r\n' + '\r\n'.repeat(term.rows));
     start();
     const ro = new ResizeObserver(() => {
       if (!body.offsetWidth) return; // hidden floor
@@ -299,6 +291,9 @@ NodeKinds.terminal = {
       ro.disconnect(); offData(); offExit();
       try { state.scrollback[node.id] = serialize.serialize({ scrollback: 300 }); } catch {}
       api.ptyKill(node.id);
+      // The node is being closed (not the app), so its persistent session ends with it.
+      const t = tmuxTarget(node);
+      if (t) call('app:tmuxKill', t);
       term.dispose();
     };
   },

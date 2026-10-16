@@ -308,6 +308,7 @@ function addNode(kind, partial = {}, floor = activeFloor()) {
   f.nodes.push(node);
   mountNode(f, node);
   save();
+  if (kind === 'terminal' && f.id === state.active) setTimeout(() => rt.get(f.id)?.live.get(node.id)?.api.focus?.(), 0);
   return node;
 }
 
@@ -381,6 +382,8 @@ function mountNode(f, node) {
     if (e.target.tagName === 'BUTTON' || title.isContentEditable) return;
     e.preventDefault(); // no text selection while dragging
     startMove(e);
+    // preventDefault above also stops the click from moving keyboard focus; give it to the node (e.g. the terminal).
+    setTimeout(() => { if (!title.isContentEditable) entry.api.focus?.(); }, 0);
   });
   title.addEventListener('dblclick', () => {
     title.contentEditable = 'true';

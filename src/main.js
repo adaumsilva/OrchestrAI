@@ -83,7 +83,10 @@ ipcMain.handle('pty:spawn', (_e, { id, cwd, cols, rows, profile, env, maestro })
   const dir = cwd && fs.existsSync(cwd) ? cwd : process.env.USERPROFILE || process.env.HOME;
   let args = Array.isArray(profile?.args) ? [...profile.args] : [];
   // WSL takes its start directory as an argument rather than a process cwd.
-  if (profile?.cdFlag && cwd) args = [...args, '--cd', cwd];
+  if (profile?.cdFlag && cwd) {
+    const sep = args.findIndex((a) => a === '--' || a === '--exec' || a === '-e'); // options must precede the command
+    args = sep < 0 ? [...args, '--cd', cwd] : [...args.slice(0, sep), '--cd', cwd, ...args.slice(sep)];
+  }
   const requested = profile?.command || defaultShell();
   const { command, args: finalArgs } = resolveCommand(requested, args);
   args = finalArgs;
@@ -154,10 +157,12 @@ files.register(ipcMain, getWin);
 chat.register(ipcMain, getWin);
 device.register(ipcMain);
 data.register(ipcMain, getWin);
+require('./services/maestri').register(ipcMain);
 shells.register(ipcMain, require('electron').shell);
+require('./services/tmux').register(ipcMain);
+ipcMain.handle('app:attentionCount', (_e, n) => tray.setAttention(n));
 ipcMain.on('pty:killAll', () => { for (const p of ptys.values()) p.kill(); ptys.clear(); });
 
-require('./services/maestri').register(ipcMain);
 app.whenReady().then(async () => {
   await bridge.start(getWin, ipcMain);
   createWindow();

@@ -159,6 +159,7 @@ const SHORTCUTS = [
   ['Remove a connection', 'Hover the rope and click ×'],
   ['Tidy', 'T arranges the selection, or all nodes'],
   ['Minimap', 'M'],
+  ['Terminals overview', 'L lists every terminal with its status; click one to jump to it'],
   ['Delete selection', 'Delete or Backspace'],
   ['Undo / redo', 'Ctrl+Z / Ctrl+Shift+Z (nodes, ropes, layout)'],
   ['Next / previous node', 'Alt+] / Alt+['],
@@ -197,6 +198,8 @@ async function replaceWorkspace(data) {
   if (!(await confirmModal('Replace workspace', 'This replaces every floor and closes all running terminals. A backup of the current workspace is kept.', 'Replace'))) return;
   await call('data:backupNow');
   api.ptyKillAll();
+  // Persistent terminals would otherwise keep running in tmux with no node to reattach to.
+  await Promise.all(state.floors.flatMap((f) => f.nodes).filter((n) => n.kind === 'terminal').map((n) => tmuxTarget(n)).filter(Boolean).map((t) => call('app:tmuxKill', t)));
   await call('workspace:save', data);
   location.reload();
 }

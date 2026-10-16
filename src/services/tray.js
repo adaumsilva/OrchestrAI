@@ -67,4 +67,11 @@ function setup(getWin) {
   });
 }
 
-module.exports = { setup, makeIcon };
+// Shows how many terminals need attention in the tray tooltip (and the taskbar badge where supported).
+function setAttention(count) {
+  const n = Math.max(0, Number(count) || 0);
+  tray?.setToolTip(n ? `OrchestrAI — ${n} terminal${n === 1 ? '' : 's'} need attention` : 'OrchestrAI');
+  try { app.setBadgeCount(n); } catch {}
+}
+
+module.exports = { setup, makeIcon, setAttention };
