@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>OrchestrAI</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:; frame-src *; child-src *" />
+  <link rel="stylesheet" href="../../node_modules/@xterm/xterm/css/xterm.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="toolbar">
+    <strong class="brand">OrchestrAI</strong>
+    <div class="menu-wrap"><button id="add-btn" class="primary">+ Add ▾</button></div>
+    <button id="link-mode" title="Connect the selected node to another (C)">🔗 Connect</button>
+    <button id="undo-btn" title="Undo (Ctrl+Z)">↶</button>
+    <button id="redo-btn" title="Redo (Ctrl+Shift+Z)">↷</button>
+    <button id="tidy-btn" title="Tidy nodes (T)">▦ Tidy</button>
+    <span id="hint">Drag to pan · scroll to zoom · Alt+drag moves a node</span>
+    <button id="minimap-btn" title="Minimap (M)">Map</button>
+    <button id="settings-btn" title="Terminal settings">⚙</button>
+    <button id="workspace-btn" title="Export, import and backups">⋯</button>
+    <button id="help-btn" title="Shortcuts (?)">?</button>
+    <div id="zoom"><button id="zoom-out" title="Zoom out">−</button><button class="pct" id="zoom-pct" title="Reset zoom">100%</button><button id="zoom-in" title="Zoom in">+</button></div>
+  </div>
+  <div id="floorbar"></div>
+  <div id="viewport"></div>
+  <div id="modal-root"></div>
+  <script src="../../node_modules/@xterm/xterm/lib/xterm.js"></script>
+  <script src="../../node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
+  <script src="../../node_modules/@xterm/addon-search/lib/addon-search.js"></script>
+  <script src="../../node_modules/@xterm/addon-serialize/lib/addon-serialize.js"></script>
+  <script src="../../node_modules/@xterm/addon-unicode11/lib/addon-unicode11.js"></script>
+  <script src="../../node_modules/@xterm/addon-web-links/lib/addon-web-links.js"></script>
+  <script src="core.js"></script>
+  <script src="kinds/terminal.js"></script>
+  <script src="kinds/note.js"></script>
+  <script src="kinds/files.js"></script>
+  <script src="kinds/git.js"></script>
+  <script src="kinds/chat.js"></script>
+  <script src="kinds/portal.js"></script>
+  <script src="kinds/device.js"></script>
+  <script src="kinds/draw.js"></script>
+  <script src="renderer.js"></script>
+  <script src="ropes.js"></script>
+  <script src="extras.js"></script>
+  <script src="history.js"></script>
+  <script src="settings.js"></script>
+  <script src="terminal-dialog.js"></script>
+  <script src="bridge.js"></script>
+</body>
+</html>
