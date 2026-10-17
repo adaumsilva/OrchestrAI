@@ -93,6 +93,7 @@ function renderTabs() {
       h('div', { class: 'floor-tab' + (f.id === state.active ? ' active' : ''), onclick: () => switchFloor(f.id) },
         f.repo ? h('span', { class: 'iso', title: `Isolated worktree (${f.branch})` }, '⑂') : null,
         h('span', {}, f.name),
+        typeof prBadge === 'function' ? prBadge(f) : null,
         h('span', { class: 'menu-dot', title: 'Floor options', onclick: (e) => { e.stopPropagation(); floorMenu(f); } }, '⋮'))),
     h('button', { id: 'add-floor', title: 'New floor', onclick: createFloorDialog }, '+'));
 }
@@ -105,6 +106,7 @@ async function createFloorDialog() {
   const note = h('div', { class: 'muted' });
   const browse = h('button', { onclick: async () => { const d = await call('files:pickDirectory'); if (d) { dir.value = d; check(); } } }, 'Browse');
   const isoLabel = h('label', { class: 'check' }, iso, 'Isolated floor (git worktree on its own branch)');
+  const fromPr = h('button', { onclick: () => { closeModal(); floorFromPrDialog(); } }, 'Or create from a pull request…');
   let repoOk = false;
   const check = async () => {
     repoOk = dir.value ? await call('git:isRepo', dir.value) : false;
@@ -118,7 +120,7 @@ async function createFloorDialog() {
     title: 'New floor',
     content: h('div', { style: 'display:flex;flex-direction:column;gap:10px' },
       h('label', {}, 'Name', name), h('label', {}, 'Directory', h('div', { class: 'row' }, dir, browse)), isoLabel, note,
-      h('label', {}, 'Setup command (runs in a terminal when the floor opens)', setup)),
+      h('label', {}, 'Setup command (runs in a terminal when the floor opens)', setup), fromPr),
     actions: [
       { label: 'Cancel', onClick: (c) => c() },
       {
@@ -147,6 +149,7 @@ function floorMenu(f) {
     h('button', { onclick: () => { closeModal(); renameFloor(f); } }, 'Rename'),
     h('button', { onclick: () => { closeModal(); hooksDialog(f); } }, 'Hooks…'),
     h('button', { onclick: () => { closeModal(); configDialog(f); } }, 'Config files…'),
+    h('button', { onclick: () => { closeModal(); prDialog(f); } }, 'Pull request…'),
     f.repo ? h('button', { class: 'primary', onclick: () => { closeModal(); landDialog(f); } }, 'Land (merge into ' + 'base branch)') : null,
     h('button', { onclick: () => { closeModal(); deleteFloor(f); } }, f.repo ? 'Discard floor and branch' : 'Delete floor'),
   ];

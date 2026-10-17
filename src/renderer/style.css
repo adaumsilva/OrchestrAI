@@ -471,3 +471,8 @@ body.sb-open #viewport { left: 190px; }
 .sb-count { grid-column: 1; font-size: 11px; color: var(--fg-subtle); }
 .sb-item .menu-dot { grid-row: 1 / span 2; grid-column: 2; opacity: 0; }
 .sb-item:hover .menu-dot { opacity: 1; }
+
+/* Pull requests */
+.pr-badge { font-size: 10px; padding: 0 6px; border-radius: 8px; background: var(--hover); color: var(--fg-muted); cursor: pointer; margin-left: 4px; }
+.pr-badge.pass { background: #30d15833; color: var(--success); } .pr-badge.fail { background: #ff453a33; color: var(--danger); }
+.pr-badge.pending { background: #ff9f0a33; color: var(--warning); } .pr-badge.merged { background: #bf5af233; color: #bf5af2; } .pr-badge.closed { color: var(--fg-subtle); }
