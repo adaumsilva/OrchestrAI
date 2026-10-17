@@ -195,7 +195,7 @@ git.register(ipcMain);
 files.register(ipcMain, getWin);
 filesExtra.register(ipcMain);
 chat.register(ipcMain, getWin);
-device.register(ipcMain);
+device.register(ipcMain, getWin);
 data.register(ipcMain, getWin);
 require('./services/maestri').register(ipcMain);
 require('./services/usage').register(ipcMain);
@@ -226,6 +226,7 @@ app.whenReady().then(async () => {
 app.on('window-all-closed', () => {
   for (const p of ptys.values()) p.kill();
   chat.killAll();
+  device.killStreams();
   data.backupNow();
   bridge.stop();
   require('./services/routines').stop();

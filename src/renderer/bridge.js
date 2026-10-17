@@ -25,7 +25,7 @@ function findTerminal(ref) {
 const roleSummary = (r) => r.instructions.replace(/\s+/g, ' ').slice(0, 80);
 
 // ---------- peer messaging (rope = permission) ----------
-const PEER_METHODS = ['peers', 'ask', 'check', 'floor-status', 'portal-list', 'portal-nav', 'portal-text', 'portal-click', 'portal-type', 'portal-shot'];
+const PEER_METHODS = ['device-list', 'device-info', 'device-shot', 'device-tap', 'device-swipe', 'device-type', 'device-key', 'device-ui', 'device-launch', 'peers', 'ask', 'check', 'floor-status', 'portal-list', 'portal-nav', 'portal-text', 'portal-click', 'portal-type', 'portal-shot'];
 
 // Portals a terminal may drive: those joined to it by a rope (a Maestro may drive any).
 function portalsFor(caller, scope) {
@@ -40,6 +40,30 @@ function portalsFor(caller, scope) {
     }
   }
   return out;
+}
+
+// Device nodes a terminal may drive: those joined to it by a rope (a Maestro may drive any).
+function devicesFor(caller, scope) {
+  const out = [];
+  for (const floor of allFloors()) {
+    const linked = scope === 'maestro' ? null : (floor.id === caller.floor.id ? floor.ropes.filter((r) => r.a === caller.node.id || r.b === caller.node.id).map((r) => (r.a === caller.node.id ? r.b : r.a)) : []);
+    for (const node of floor.nodes) {
+      if (node.kind !== 'device' || (linked && !linked.includes(node.id))) continue;
+      const entry = rt.get(floor.id)?.live.get(node.id);
+      if (entry?.api.device) out.push({ floor, node, api: entry.api.device });
+    }
+  }
+  return out;
+}
+
+function resolveDevice(caller, scope, ref) {
+  const all = devicesFor(caller, scope);
+  const q = String(ref || '').trim().toLowerCase();
+  if (!q && all.length === 1) return all[0];
+  const hits = all.filter((d) => d.node.id === ref || d.node.title.toLowerCase() === q);
+  if (hits.length === 1) return hits[0];
+  if (hits.length > 1) throw new Error('"' + ref + '" matches ' + hits.length + ' device nodes; use an id: ' + hits.map((d) => d.node.id).join(', '));
+  throw new Error(all.length ? 'No device node "' + ref + '" connected to this terminal.' : 'No device node is connected to this terminal. Add a Device node and connect it with a rope first.');
 }
 
 function resolvePortal(caller, scope, ref) {
@@ -108,6 +132,18 @@ async function bridgeHandle(method, p, from, scope) {
         return (scope === 'maestro' ? allTerminals().filter((t) => t !== caller) : peersOf(caller)).map((t) => ({
           id: t.node.id, name: t.node.title, status: t.entry?.api.status?.() || 'unknown', role: roleById(t.node.data.roleId)?.name || '',
         }));
+      case 'device-list': {
+        const nodes = devicesFor(caller, scope);
+        return Promise.all(nodes.map(async (d) => ({ node: d.node.id, name: d.node.title, serial: d.api.serial() || '', devices: (await d.api.list().catch(() => [])).filter((x) => x.state === 'device').map((x) => x.serial).join(',') })));
+      }
+      case 'device-info': return resolveDevice(caller, scope, p_.target).api.info(p_.serial);
+      case 'device-shot': return resolveDevice(caller, scope, p_.target).api.shot(p_.serial);
+      case 'device-tap': return resolveDevice(caller, scope, p_.target).api.tap(Number(p_.x), Number(p_.y), p_.serial).then(() => ({ ok: true }));
+      case 'device-swipe': return resolveDevice(caller, scope, p_.target).api.swipe(Number(p_.x1), Number(p_.y1), Number(p_.x2), Number(p_.y2), Number(p_.ms) || 250, p_.serial).then(() => ({ ok: true }));
+      case 'device-type': return resolveDevice(caller, scope, p_.target).api.type(String(p_.text ?? ''), p_.serial).then(() => ({ ok: true }));
+      case 'device-key': return resolveDevice(caller, scope, p_.target).api.key(String(p_.key || ''), p_.serial).then(() => ({ ok: true }));
+      case 'device-launch': return resolveDevice(caller, scope, p_.target).api.launch(String(p_.pkg || ''), p_.serial).then(() => ({ ok: true }));
+      case 'device-ui': return resolveDevice(caller, scope, p_.target).api.ui(p_.serial);
       case 'portal-list':
         return portalsFor(caller, scope).map((p) => ({ id: p.node.id, name: p.node.title, url: p.api.url(), title: p.api.title() }));
       case 'portal-nav': {

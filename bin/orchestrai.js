@@ -32,6 +32,18 @@ Browser portals joined to this terminal by a rope (a Maestro can use any portal;
   orchestrai portal type <portal> <selector> <text...>   Fill an input
   orchestrai portal shot <portal>               Save a screenshot and print its file path
 
+Android devices: a Device node joined to this terminal by a rope (a Maestro can use any; use "-" for <device> when only one is connected):
+  orchestrai device list                        List the device nodes and their adb devices
+  orchestrai device shot <device>               Save a screenshot and print its file path
+  orchestrai device ui <device>                 Print the on-screen elements (label, id, centre x y, clickable)
+  orchestrai device tap <device> <x> <y>        Tap at screen coordinates
+  orchestrai device swipe <device> <x1> <y1> <x2> <y2> [--ms N]
+  orchestrai device type <device> <text...>     Type text into the focused field
+  orchestrai device key <device> <back|home|recents|enter|power|volup|voldown|CODE>
+  orchestrai device launch <device> <package>   Start an app
+  orchestrai device info <device>               Print the screen size
+  (all take --serial S to pick one adb device when several are attached)
+
 Any terminal can report progress on its floor (shown on the floor tab):
   orchestrai floor-status <text...> [--state working|waiting|blocked|done]   (no text clears it)
 
@@ -147,6 +159,27 @@ function table(rows, cols) {
       case 'ask': {
         if (rest.length < 2) throw new Error('Usage: orchestrai ask <peer> <text...> [--timeout S]');
         console.log(await rpc('ask', { target: rest[0], text: rest.slice(1).join(' '), timeout: flags.timeout ? Number(flags.timeout) : undefined, quiet: flags.quiet ? Number(flags.quiet) : undefined }));
+        break;
+      }
+      case 'device': {
+        const [sub, ref0, ...args] = rest;
+        const target = ref0 === '-' ? '' : ref0;
+        const serial = flags.serial;
+        const num = (v, name) => { if (v === undefined || !Number.isFinite(Number(v))) throw new Error('Expected a number for ' + name); return Number(v); };
+        if (sub === 'list') {
+          const list = await rpc('device-list', {});
+          console.log(flags.json ? JSON.stringify(list, null, 2) : table(list, ['node', 'name', 'serial', 'devices']));
+        } else if (sub === 'shot') console.log((await rpc('device-shot', { target, serial })).path);
+        else if (sub === 'info') { const r = await rpc('device-info', { target, serial }); console.log(r.width + 'x' + r.height); }
+        else if (sub === 'ui') {
+          const nodes = await rpc('device-ui', { target, serial });
+          console.log(flags.json ? JSON.stringify(nodes, null, 2) : nodes.map((n) => [n.label, n.id || '-', n.cx + ' ' + n.cy, n.clickable ? 'clickable' : ''].join('\t')).join('\n'));
+        } else if (sub === 'tap') await rpc('device-tap', { target, serial, x: num(args[0], 'x'), y: num(args[1], 'y') });
+        else if (sub === 'swipe') await rpc('device-swipe', { target, serial, x1: num(args[0], 'x1'), y1: num(args[1], 'y1'), x2: num(args[2], 'x2'), y2: num(args[3], 'y2'), ms: flags.ms });
+        else if (sub === 'type') { if (!args.length) throw new Error('Usage: orchestrai device type <device> <text...>'); await rpc('device-type', { target, serial, text: args.join(' ') }); }
+        else if (sub === 'key') { if (!args[0]) throw new Error('Usage: orchestrai device key <device> <key>'); await rpc('device-key', { target, serial, key: args[0] }); }
+        else if (sub === 'launch') { if (!args[0]) throw new Error('Usage: orchestrai device launch <device> <package>'); await rpc('device-launch', { target, serial, pkg: args[0] }); }
+        else throw new Error('Usage: orchestrai device list | shot | ui | tap | swipe | type | key | launch | info');
         break;
       }
       case 'portal': {
