@@ -33,7 +33,7 @@ const binDir = path.join(__dirname, '..', 'bin').replace(/app\.asar([\\/])/, 'ap
 function ensureSpawnHelper() {
   if (process.platform === 'win32') return;
   try {
-    const base = path.join(path.dirname(require.resolve('node-pty/package.json')), 'prebuilds', `${process.platform}-${process.arch}`).replace(/app.asar([\/])/, 'app.asar.unpacked$1');
+    const base = path.join(path.dirname(require.resolve('node-pty/package.json')), 'prebuilds', `${process.platform}-${process.arch}`).replace(/app\.asar([\\/])/, 'app.asar.unpacked$1');
     const helper = path.join(base, 'spawn-helper');
     if (fs.existsSync(helper)) fs.chmodSync(helper, 0o755);
   } catch {}
