@@ -78,8 +78,8 @@ module.exports = async (t) => {
 
   // UI: test-landing dialog shows conflicts
   await t.js(`switchFloor(state.floors.find((f) => f.name === 'Feat').id); testLanding(activeFloor()); 0`);
-  await t.sleep(1500);
-  const txt = await t.js(`document.querySelector('#modal-root')?.innerText || ''`);
+  let txt = '';
+  for (let i = 0; i < 60 && !/conflicting/.test(txt); i++) { await t.sleep(250); txt = await t.js(`document.querySelector('#modal-root')?.innerText || ''`); } // the dry run needs a temporary worktree: slow on busy machines
   t.check('test landing dialog lists the conflicting file', /conflicting/.test(txt) && /a\.txt/.test(txt), txt);
   await t.js(`closeModal(); 0`);
 };

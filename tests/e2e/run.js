@@ -11,7 +11,7 @@ let failed = 0;
 for (const f of files) {
   console.log(`\n== ${f}`);
   const r = spawnSync(electron, [path.join(__dirname, 'entry.js')], { env: { ...env, ORCH_TEST: path.join(__dirname, f) }, stdio: "inherit", timeout: Number(process.env.ORCH_E2E_TIMEOUT) || 300000 });
-  if (r.status !== 0) failed++;
+  if (r.status !== 0) { failed++; console.log(`FAILED FILE ${files[files.indexOf(f)]}: exit ${r.status}${r.signal ? ', signal ' + r.signal : ''}${r.error ? ', ' + r.error.message : ''}`); }
 }
 console.log(failed ? `\n${failed} test file(s) failed` : '\nall passed');
 process.exit(failed ? 1 : 0);
