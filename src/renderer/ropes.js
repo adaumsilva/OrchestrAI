@@ -127,7 +127,7 @@ function stepRopes() {
     if (energy > SLEEP_SPEED || performance.now() < sim.flashUntil + 50) moving = true;
   }
   // drop DOM for deleted ropes (ropes on other floors keep their state)
-  const existing = new Set(state.floors.flatMap((fl) => fl.ropes.map((r) => r.id)));
+  const existing = new Set(allFloors().flatMap((fl) => fl.ropes.map((r) => r.id)));
   for (const [id, sim] of sims) {
     if (existing.has(id)) continue;
     sim.dom?.g.remove();

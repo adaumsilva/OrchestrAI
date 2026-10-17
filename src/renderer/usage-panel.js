@@ -31,7 +31,7 @@ function applyUsageWarnings() {
   const btn = document.getElementById('usage-btn');
   btn?.classList.toggle('warn', near.length > 0);
   if (btn) btn.title = near.length ? `Near a limit: ${near.map((p) => p.name).join(', ')}` : 'Agent usage';
-  for (const f of state.floors) {
+  for (const f of allFloors()) {
     const R = rt.get(f.id);
     for (const n of f.nodes) {
       if (n.kind !== 'terminal') continue;

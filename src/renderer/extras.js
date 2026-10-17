@@ -201,7 +201,7 @@ async function replaceWorkspace(data) {
   await call('data:backupNow');
   api.ptyKillAll();
   // Persistent terminals would otherwise keep running in tmux with no node to reattach to.
-  await Promise.all(state.floors.flatMap((f) => f.nodes).filter((n) => n.kind === 'terminal').map((n) => tmuxTarget(n)).filter(Boolean).map((t) => call('app:tmuxKill', t)));
+  await Promise.all(allFloors().flatMap((f) => f.nodes).filter((n) => n.kind === 'terminal').map((n) => tmuxTarget(n)).filter(Boolean).map((t) => call('app:tmuxKill', t)));
   await call('workspace:save', data);
   location.reload();
 }
@@ -234,6 +234,7 @@ async function workspaceDialog() {
             const r = await call('data:import');
             if (r.error) return alertModal('Import failed', r.error);
             if (r.floor) { closeModal(); addImportedFloor(r); }
+            else if (r.data?.workspace) { closeModal(); importWorkspace(r.data); }
             else if (r.data) { closeModal(); replaceWorkspace(r.data); }
           },
         }, 'Import…'),

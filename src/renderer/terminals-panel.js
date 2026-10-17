@@ -15,7 +15,7 @@ const STATUS_TEXT = { restored: 'Restored', idle: 'Idle', starting: 'Starting', 
 
 function terminalRows() {
   const rows = [];
-  for (const f of state.floors) {
+  for (const f of allFloors()) {
     for (const n of f.nodes) {
       if (n.kind !== 'terminal') continue;
       const entry = rt.get(f.id)?.live.get(n.id);

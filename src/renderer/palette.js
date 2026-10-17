@@ -59,13 +59,13 @@ function rememberRecent(key) {
 
 function nodeItems({ kind, exclude } = {}) {
   const items = [];
-  for (const f of state.floors) {
+  for (const f of allFloors()) {
     for (const n of f.nodes) {
       if (kind && n.kind !== kind) continue;
       if (exclude && exclude.includes(n.id)) continue;
       items.push({
         key: 'node:' + n.id, group: 'Nodes', icon: KIND_ICONS[n.kind] || '□', label: n.title || NodeKinds[n.kind]?.label || n.kind,
-        sub: `${NodeKinds[n.kind]?.label || n.kind} · ${f.name}`, node: n, floor: f,
+        sub: `${NodeKinds[n.kind]?.label || n.kind} · ${state.workspaces.length > 1 ? wsOfFloor(f.id).name + ' / ' : ''}${f.name}`, node: n, floor: f,
         run: () => jumpToNode(f, n),
       });
     }
@@ -84,7 +84,7 @@ function paletteItems() {
     if (!p.command) continue;
     items.push({ key: 'preset:' + p.id, group: 'Presets', icon: p.icon || '❯_', label: `New terminal: ${p.name}`, sub: p.command, run: () => addNode('terminal', { title: p.name, data: { command: p.command, icon: p.icon } }) });
   }
-  for (const f of state.floors) items.push({ key: 'floor:' + f.id, group: 'Floors', icon: '▭', label: `Floor: ${f.name}`, sub: f.id === state.active ? 'current' : `${f.nodes.length} nodes`, run: () => switchFloor(f.id) });
+  for (const f of allFloors()) items.push({ key: 'floor:' + f.id, group: 'Floors', icon: '▭', label: `Floor: ${f.name}`, sub: f.id === state.active ? 'current' : `${state.workspaces.length > 1 ? wsOfFloor(f.id).name + ' · ' : ''}${f.nodes.length} nodes`, run: () => switchFloor(f.id) });
   items.push(...nodeItems());
   return items;
 }

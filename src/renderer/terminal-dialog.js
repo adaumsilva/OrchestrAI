@@ -181,7 +181,7 @@ async function terminalDialog({ mode, floor, node }) {
     }
     const q = roleSearch.toLowerCase();
     const roles = state.settings.roles.filter((r) => !q || r.name.toLowerCase().includes(q) || r.instructions.toLowerCase().includes(q));
-    const inUse = (id) => state.floors.flatMap((f) => f.nodes).filter((n) => n.kind === 'terminal' && n.data.roleId === id).length;
+    const inUse = (id) => allFloors().flatMap((f) => f.nodes).filter((n) => n.kind === 'terminal' && n.data.roleId === id).length;
     const search = h('input', { placeholder: 'Search roles\u2026', value: roleSearch, oninput: (e) => { roleSearch = e.target.value; renderRoleList(); } });
     const list = h('div', { class: 'role-list' });
     function renderRoleList() {
@@ -192,7 +192,7 @@ async function terminalDialog({ mode, floor, node }) {
           h('div', { class: 'role-main' }, h('div', { class: 'role-name' }, r.name, used ? h('span', { class: 'role-used' }, `${used} in use`) : null), h('div', { class: 'role-sum' }, r.instructions.slice(0, 110))),
           confirmDelete === r.id
             ? h('div', { class: 'role-actions', onclick: (e) => e.stopPropagation() },
-              h('button', { class: 'sheet-btn danger', onclick: () => { state.settings.roles = state.settings.roles.filter((x) => x.id !== r.id); if (draft.roleId === r.id) draft.roleId = ''; for (const f of state.floors) for (const n of f.nodes) if (n.data?.roleId === r.id) n.data.roleId = ''; confirmDelete = ''; save(); render(); } }, used ? `Delete (unassigns ${used})` : 'Confirm delete'),
+              h('button', { class: 'sheet-btn danger', onclick: () => { state.settings.roles = state.settings.roles.filter((x) => x.id !== r.id); if (draft.roleId === r.id) draft.roleId = ''; for (const f of allFloors()) for (const n of f.nodes) if (n.data?.roleId === r.id) n.data.roleId = ''; confirmDelete = ''; save(); render(); } }, used ? `Delete (unassigns ${used})` : 'Confirm delete'),
               h('button', { class: 'sheet-btn', onclick: () => { confirmDelete = ''; render(); } }, 'Keep'))
             : h('div', { class: 'role-actions', onclick: (e) => e.stopPropagation() },
               h('button', { title: 'Edit', onclick: () => { roleEditor = { id: r.id, name: r.name, instructions: r.instructions }; render(); } }, '\u270E'),

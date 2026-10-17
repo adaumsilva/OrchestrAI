@@ -3,7 +3,7 @@
 
 function allTerminals() {
   const out = [];
-  for (const floor of state.floors) {
+  for (const floor of allFloors()) {
     for (const node of floor.nodes) {
       if (node.kind === 'terminal') out.push({ floor, node, entry: rt.get(floor.id)?.live.get(node.id) });
     }

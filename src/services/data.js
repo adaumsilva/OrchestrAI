@@ -10,8 +10,10 @@ const backupDir = () => path.join(app.getPath('userData'), 'backups');
 const stateFile = () => path.join(app.getPath('userData'), 'workspace.json');
 
 function validate(data) {
-  if (!data || !Array.isArray(data.floors) || !data.floors.length) throw new Error('Not an OrchestrAI workspace file.');
-  for (const f of data.floors) {
+  // Either a whole saved state (workspaces[], or the older single floors[]) or one exported workspace.
+  const groups = data && data.workspace ? [data.workspace.floors] : data && Array.isArray(data.workspaces) ? data.workspaces.map((w) => w && w.floors) : [data && data.floors];
+  if (!groups.length || groups.some((g) => !Array.isArray(g) || !g.length)) throw new Error('Not an OrchestrAI workspace file.');
+  for (const f of groups.flat()) {
     if (!f || typeof f.id !== 'string' || !Array.isArray(f.nodes) || !Array.isArray(f.ropes)) throw new Error('Workspace file is malformed.');
   }
   return data;

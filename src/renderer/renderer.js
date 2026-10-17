@@ -3,6 +3,24 @@ const viewport = document.getElementById('viewport');
 const floorbar = document.getElementById('floorbar');
 
 let state = { floors: [], active: null };
+
+// State holds workspaces[]; each has its own floors. state.floors / state.active are accessors for the CURRENT workspace
+// (not serialized), so code written for a single workspace keeps working. allFloors() spans every workspace.
+function adoptState(s) {
+  if (!Array.isArray(s.workspaces) || !s.workspaces.length) {
+    s.workspaces = [{ id: Math.random().toString(36).slice(2, 10), name: 'Workspace 1', dir: '', profileId: '', floors: s.floors || [], active: s.active || null }];
+    s.activeWs = s.workspaces[0].id;
+  }
+  if (!s.workspaces.some((w) => w.id === s.activeWs)) s.activeWs = s.workspaces[0].id;
+  delete s.floors; delete s.active;
+  const cur = () => s.workspaces.find((w) => w.id === s.activeWs);
+  Object.defineProperty(s, 'floors', { get: () => cur().floors, set: (v) => { cur().floors = v; }, enumerable: false, configurable: true });
+  Object.defineProperty(s, 'active', { get: () => cur().active, set: (v) => { cur().active = v; }, enumerable: false, configurable: true });
+  return s;
+}
+const allFloors = () => state.workspaces.flatMap((w) => w.floors);
+const wsOfFloor = (id) => state.workspaces.find((w) => w.floors.some((f) => f.id === id));
+const wsOfNode = (nodeId) => state.workspaces.find((w) => w.floors.some((f) => f.nodes.some((n) => n.id === nodeId)));
 const rt = new Map(); // floor id -> { root, world, nodesEl, ropesEl, live: Map(node id -> entry) }
 let zTop = 1;
 const selection = new Set(); // node ids selected on the active floor
@@ -57,7 +75,10 @@ function switchFloor(id) {
   if (typeof flushHistory === 'function') flushHistory();
   selection.clear();
   if (typeof cancelConnect === 'function') cancelConnect();
+  const ws = wsOfFloor(id);
+  if (ws && ws.id !== state.activeWs) state.activeWs = ws.id;
   state.active = id;
+  if (typeof renderSidebar === 'function') renderSidebar();
   for (const [fid, e] of rt) e.root.classList.toggle('hidden', fid !== id);
   renderTabs();
   applyView(activeFloor());
@@ -78,7 +99,7 @@ function renderTabs() {
 
 async function createFloorDialog() {
   const name = h('input', { placeholder: 'Floor name', value: `Floor ${state.floors.length + 1}` });
-  const dir = h('input', { placeholder: 'Working directory (optional)' });
+  const dir = h('input', { placeholder: 'Working directory (optional)', value: state.workspaces.find((w) => w.id === state.activeWs)?.dir || '' });
   const iso = h('input', { type: 'checkbox' });
   const setup = h('input', { placeholder: 'e.g. npm install (optional)' });
   const note = h('div', { class: 'muted' });
@@ -476,15 +497,16 @@ function buildToolbar() {
   // Classic scripts after this one (ropes.js) must finish loading before nodes mount.
   if (document.readyState === 'loading') await new Promise((res) => addEventListener('DOMContentLoaded', res));
   const saved = await call('workspace:load');
-  if (saved?.floors) state = saved;
+  if (saved?.floors || saved?.workspaces) state = saved;
   else if (saved?.nodes) {
     // v0.1 single-canvas workspace: migrate into one floor
     state = { floors: [newFloor({ name: 'Main', view: saved.view, ropes: saved.ropes || [], nodes: (saved.nodes || []).map((n) => ({ ...n, data: n.kind === 'note' ? { text: n.text || '' } : {} })) })], active: null };
   }
+  state = adoptState(state);
   if (!state.floors.length) state.floors.push(newFloor({ name: 'Main' }));
   normalizeSettings();
   buildToolbar();
-  state.floors.forEach(mountFloor);
+  allFloors().forEach(mountFloor);
   switchFloor(state.floors.find((f) => f.id === state.active)?.id || state.floors[0].id);
   const f = activeFloor();
   if (!f.nodes.length) addNode('terminal');

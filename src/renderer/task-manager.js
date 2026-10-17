@@ -78,7 +78,7 @@ function tmUpdateTrack(n, status, st, now) {
 function taskRows() {
   const now = Date.now();
   const rows = [];
-  for (const f of state.floors) {
+  for (const f of allFloors()) {
     for (const n of f.nodes) {
       if (n.kind !== 'terminal') continue;
       const entry = rt.get(f.id)?.live.get(n.id);
@@ -181,6 +181,6 @@ addEventListener('terminal-status', () => { if (tmOpen()) renderTaskManager(); }
 setInterval(() => { if (tmOpen()) sampleTaskManager(); }, TM_INTERVAL);
 // Forget terminals that were removed.
 setInterval(() => {
-  const live = new Set(state.floors.flatMap((f) => f.nodes.map((n) => n.id)));
+  const live = new Set(allFloors().flatMap((f) => f.nodes.map((n) => n.id)));
   for (const id of tmTrack.keys()) if (!live.has(id)) tmTrack.delete(id);
 }, 30000);

@@ -49,7 +49,7 @@ function normalizeSettings() {
 const terminalSettings = () => state.settings?.terminal || TERMINAL_DEFAULTS;
 
 function applyTerminalSettings() {
-  for (const f of state.floors) rt.get(f.id)?.live.forEach((e) => e.api.applySettings?.());
+  for (const f of allFloors()) rt.get(f.id)?.live.forEach((e) => e.api.applySettings?.());
 }
 
 // Split a command line into arguments, honouring single and double quotes.
@@ -64,7 +64,7 @@ const joinCommandLine = (command, args = []) => [command, ...args].map((p) => (/
 // ---------- scrollback persistence ----------
 function persistScrollbacks({ sync = false } = {}) {
   const alive = new Set();
-  for (const f of state.floors) {
+  for (const f of allFloors()) {
     rt.get(f.id)?.live.forEach((e, id) => {
       if (!e.api.snapshot) return;
       alive.add(id);
@@ -88,7 +88,7 @@ async function loadProfiles(fresh) {
 // Which profile a terminal node starts: its own choice, else the global default, else the platform shell.
 async function resolveProfile(node) {
   if (node.data.profile) return node.data.profile;
-  const id = terminalSettings().profileId;
+  const id = wsOfNode(node.id)?.profileId || terminalSettings().profileId;
   if (id) {
     const { detected, custom } = await loadProfiles();
     const hit = [...custom, ...detected].find((p) => p.id === id);
