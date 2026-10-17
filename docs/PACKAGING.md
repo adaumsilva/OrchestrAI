@@ -28,13 +28,17 @@ The workflow `.github/workflows/build.yml` builds, tests and smoke-tests all thr
 `npm run smoke` (or `node scripts/smoke-packaged.js <path-to-executable>`) launches the packaged app with a throwaway profile and checks, from inside the app, that the interface loads, a terminal runs `echo`, and `orchestrai help` runs from the packaged files. It prints a JSON result and exits non-zero on failure. On headless Linux run it as `SMOKE_ARGS=--no-sandbox xvfb-run -a npm run smoke`.
 
 ### Status of platform checks
-| Platform | Package | Smoke test | Notes |
-| --- | --- | --- | --- |
-| Windows 11 x64 | built (unpacked, NSIS installer) | passed on the unpacked build | The installer itself was built but not run on the development machine. |
-| macOS | configured, built in CI | runs in CI | Not run by hand. Tray, `zsh` login shells and the dmg are unverified until CI reports. |
-| Linux | configured, built in CI | runs in CI under xvfb | Not run by hand. Tray support depends on the desktop environment (AppIndicator). |
+Verified in GitHub Actions on 2026-10-17 (workflow `build`, run 39067760686): on each of the three runners the app was packaged, launched from the packaged files, a terminal ran `echo`, and `orchestrai help` ran from the unpacked `bin/` folder.
 
-When you run the smoke test on macOS or Linux, add the result here.
+| Platform | Package | Smoke test of the packaged app | End-to-end tests |
+| --- | --- | --- | --- |
+| Windows (x64) | NSIS installer + zip | passes in CI; also run by hand on Windows 11 | pass in CI |
+| macOS (arm64 runner) | dmg + zip | passes in CI | run in CI, failures reported but not blocking |
+| Linux (x64, Ubuntu runner) | AppImage + deb | passes in CI under xvfb with `--no-sandbox` | run in CI, failures reported but not blocking |
+
+What has **not** been done by hand: running the Windows installer itself (only the unpacked build of the same files), opening the macOS dmg, or using the tray on a real macOS or Linux desktop. Two fixes came out of these runs and are worth knowing: the `orchestrai` command must be added to the existing `Path` variable on Windows (not a second `PATH`), and node-pty's `spawn-helper` needs its execute bit on macOS.
+
+When you run the smoke test on a real desktop, add what you saw here.
 
 ## Known platform differences
 - **Shell profiles** come from `/etc/shells` on macOS and Linux and from PowerShell, cmd, Git Bash and WSL on Windows (`src/services/shells.js`).
