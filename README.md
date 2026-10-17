@@ -9,6 +9,17 @@
 
 > Independent open-source project. It is not affiliated with or endorsed by any similar product.
 
+![A Maestro terminal conducting Claude Code and Codex terminals, connected by ropes, with a planning note](docs/images/canvas.png)
+
+## Why OrchestrAI
+- **Unlimited workspaces, free.** Create as many floors (separate canvases, each with its own folder, optionally an isolated git worktree) and as many terminals and nodes as your machine can handle. No workspace caps, no paid tiers, no license keys.
+- **Free and open source (MIT).** Read it, fork it, change it. Your workspaces, notes and scrollback stay on your computer in plain JSON, with automatic backups and export/import.
+- **Bring your own agents.** Not tied to one vendor: run Claude Code, Codex, OpenCode, Antigravity or any CLI side by side, each in a shell you configure (PowerShell, Git Bash, WSL, SSH, Docker).
+- **Conductor built in.** A Maestro terminal can create, message and read other terminals through a local `orchestrai` CLI that listens on 127.0.0.1 only.
+- **Safe parallel work.** Give each agent its own git worktree floor, review every diff, then land it with a no-fast-forward merge (or discard it).
+- **Know what your agents are doing.** Live task manager with CPU, memory and time per terminal, plus per-provider token and limit tracking.
+- **Local first.** No account, no telemetry, no cloud service required.
+
 ## Highlights
 - **Infinite canvas** of terminals, notes, drawings, file trees, git, chat, portal (browser) and device nodes, with ropes, tidy layout, minimap and undo/redo.
 - **Floors**: one canvas per task, optionally an isolated git worktree and branch, with setup/landing hooks and a reviewed merge back.
@@ -26,6 +37,9 @@ Requires [Node.js](https://nodejs.org/) 18+ and git. Windows is the primary plat
     npm start
 
 If you launch from a VS Code or Claude Code shell, unset `ELECTRON_RUN_AS_NODE` first (`env -u ELECTRON_RUN_AS_NODE npm start` in Git Bash, `Remove-Item Env:ELECTRON_RUN_AS_NODE` in PowerShell).
+
+## Screenshots
+![Task manager showing Claude Code and Codex running, with CPU, memory, tokens and limits](docs/images/tasks.png)
 
 ## Contributing
 Contributions are welcome, including your first one.
