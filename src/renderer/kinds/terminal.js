@@ -130,7 +130,7 @@ NodeKinds.terminal = {
       const parts = [];
       const role = roleById(node.data.roleId);
       if (role) parts.push(rolePrompt(role));
-      if (node.data.maestro) parts.push(MAESTRO_PRIMER);
+      if (node.data.maestro) parts.push(skillCovers(node.data.command) ? 'You are the Maestro of this OrchestrAI canvas. Follow the orchestrai skill to direct other terminals.' : MAESTRO_PRIMER);
       return parts.join('\n\n');
     };
     const screenTail = () => { const b = term.buffer.active; const out = []; for (let i = b.baseY; i < b.baseY + term.rows; i++) out.push(b.getLine(i)?.translateToString(true) ?? ''); return out.join('\n'); };

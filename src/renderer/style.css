@@ -445,3 +445,7 @@ webview { flex: 1; min-height: 0; background: #fff; border-radius: 6px; }
 .md-tablewrap { overflow-x: auto; margin: .6em 0; }
 .md table { border-collapse: collapse; } .md th, .md td { border: 1px solid var(--border-strong); padding: 3px 8px; } .md th { background: var(--hover); text-align: left; }
 .md-img { max-width: 100%; border-radius: 6px; }
+
+/* Agent skills */
+.skill-row { display: flex; align-items: center; gap: 8px; padding: 8px; border: 1px solid var(--border); border-radius: 8px; }
+.skill-ok { color: var(--success); } .skill-old { color: var(--warning); }

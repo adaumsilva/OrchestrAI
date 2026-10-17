@@ -73,7 +73,7 @@ Tabs under the toolbar. Each floor is its own canvas with its own working direct
 - **Role**: reusable roles (instructions for an agent). Starter roles are included; create, edit and delete your own. When the terminal has a command, the role text is pasted to the agent as its first message once it goes quiet after starting.
 - **Monitor Activity**: each terminal shows a status dot (starting, running, idle, exited). When a burst of output ends and you are not looking at the terminal, its border pulses and, if the app is in the background, a desktop notification appears. Clicking the terminal clears it.
 - **Maestro**: promotes a local terminal to a conductor. It gets the `orchestrai` command on its PATH:
-  `orchestrai list | new --name N --command C [--role R] [--cwd DIR] | send <terminal> <text> | read <terminal> [--lines N] | close <terminal> | roles`.
+  `orchestrai list | new --name N --command C [--role R] [--cwd DIR] | send <terminal> <text> | read <terminal> [--lines N] | close <terminal> | roles | peers | ask <peer> <text> | check <peer> | routine list|add|remove`.
   New terminals appear next to the Maestro, connected by a rope. The bridge listens on 127.0.0.1 only, with a per-run token that only Maestro terminals receive.
 
 ## Terminals overview
