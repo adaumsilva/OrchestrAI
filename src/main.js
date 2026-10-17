@@ -185,6 +185,7 @@ require('./services/skills').register(ipcMain);
 require('./services/configfiles').register(ipcMain);
 require('./services/prs').register(ipcMain);
 require('./services/ide').register(ipcMain);
+require('./services/templates').register(ipcMain, getWin);
 shells.register(ipcMain, require('electron').shell);
 require('./services/tmux').register(ipcMain);
 ipcMain.handle('app:attentionCount', (_e, n) => tray.setAttention(n));
