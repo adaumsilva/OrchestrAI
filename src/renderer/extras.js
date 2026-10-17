@@ -1,7 +1,7 @@
 // Selection actions, tidy, minimap, keyboard navigation, shortcuts help and the workspace dialog.
 // Loaded after renderer.js and ropes.js; uses their globals at call time.
 
-const KIND_COLORS = { terminal: '#8e8e93', note: '#ffd60a', files: '#64d2ff', git: '#ff9f0a', chat: '#bf5af2', portal: '#30d158', device: '#ff453a', draw: '#ff375f' };
+const KIND_COLORS = { group: '#636366', terminal: '#8e8e93', note: '#ffd60a', files: '#64d2ff', git: '#ff9f0a', chat: '#bf5af2', portal: '#30d158', device: '#ff453a', draw: '#ff375f' };
 const modalOpen = () => !!document.getElementById('modal-root').firstChild;
 
 // ---------- selection ----------
@@ -41,8 +41,9 @@ function tidy() {
   const f = activeFloor();
   if (!f || !f.nodes.length) return;
   const picked = selection.size > 1 ? f.nodes.filter((n) => selection.has(n.id)) : f.nodes.slice();
-  const nodes = picked.sort((a, b) => (Math.abs(a.y - b.y) > 80 ? a.y - b.y : a.x - b.x));
+  const nodes = tidyUnits(f, picked).sort((a, b) => (Math.abs(a.y - b.y) > 80 ? a.y - b.y : a.x - b.x));
   const gap = 28;
+  const before = new Map(nodes.map((n) => [n.id, { x: n.x, y: n.y }]));
   const left = Math.min(...nodes.map((n) => n.x)), top = Math.min(...nodes.map((n) => n.y));
   const widest = nodes.reduce((s, n) => s + n.w + gap, 0);
   const rowMax = Math.max(1400, Math.min(widest, 2400) / Math.ceil(Math.sqrt(nodes.length / 2 + 0.01)));
@@ -54,6 +55,7 @@ function tidy() {
     rowH = Math.max(rowH, n.h);
   }
   glide(f);
+  nodes.forEach((n) => { const o = before.get(n.id); if (n.kind === 'group') moveGroupMembers(f, n, n.x - o.x, n.y - o.y); });
   nodes.forEach((n) => place(n, rt.get(f.id).live.get(n.id).el));
   save();
 }
@@ -165,6 +167,7 @@ const SHORTCUTS = [
   ['Undo / redo', 'Ctrl+Z / Ctrl+Shift+Z (nodes, ropes, layout)'],
   ['Next / previous node', 'Alt+] / Alt+['],
   ['Next / previous floor', 'Ctrl+PageDown / Ctrl+PageUp'],
+  ['Group nodes', 'Ctrl+G groups the selection in a colored frame (Ctrl+Shift+G ungroups); moving the frame moves its nodes'],
   ['Command palette', 'Ctrl+K searches commands, nodes on every floor, floors and presets; Enter runs, Esc closes'],
   ['Shortcuts', '?'],
 ];

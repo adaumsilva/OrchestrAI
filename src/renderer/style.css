@@ -483,3 +483,9 @@ body.sb-open #viewport { left: 190px; }
 .rope-stub .stub-label:hover { color: var(--accent); }
 .rope-stub .stub-x { padding: 0 5px; background: none; color: var(--fg-subtle); font-size: 10px; }
 .rope-stub.active { border-color: var(--accent); color: var(--accent); }
+
+/* Groups */
+.node.group-node { z-index: 0 !important; pointer-events: none; background: color-mix(in srgb, var(--group) 10%, transparent); border: 1.5px solid color-mix(in srgb, var(--group) 55%, transparent); box-shadow: none; }
+.node.group-node .node-head { pointer-events: auto; background: color-mix(in srgb, var(--group) 22%, transparent); }
+.node.group-node .node-body { visibility: hidden; }
+.node.group-node .resize { pointer-events: auto; }

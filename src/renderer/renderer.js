@@ -30,7 +30,7 @@ function setSelection(f, ids) {
   ids.forEach((id) => selection.add(id));
   rt.get(f.id)?.live.forEach((e, id) => e.el.classList.toggle('selected', selection.has(id)));
 }
-const KIND_ICONS = { terminal: '❯_', note: '✎', stack: '🗃', files: '🗂', git: '⑂', chat: '💬', portal: '🌐', device: '📱', draw: '✏' };
+const KIND_ICONS = { group: '▢', terminal: '❯_', note: '✎', stack: '🗃', files: '🗂', git: '⑂', chat: '💬', portal: '🌐', device: '📱', draw: '✏' };
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 let saveTimer;
@@ -379,7 +379,10 @@ function mountNode(f, node) {
   }, true);
   const startMove = (e) => {
     const ids = selection.has(node.id) ? [...selection] : [node.id];
-    const moving = ids.map((id) => f.nodes.find((n) => n.id === id)).filter(Boolean).map((n) => ({ n, ox: n.x, oy: n.y }));
+    // Moving a group frame carries its members along.
+    const carried = new Set(ids);
+    for (const id of ids) { const g = f.nodes.find((n) => n.id === id); if (g?.kind === 'group') (g.data.members || []).forEach((m) => carried.add(m)); }
+    const moving = [...carried].map((id) => f.nodes.find((n) => n.id === id)).filter(Boolean).map((n) => ({ n, ox: n.x, oy: n.y }));
     const sx = e.clientX, sy = e.clientY;
     drag((m) => {
       for (const { n, ox, oy } of moving) {
