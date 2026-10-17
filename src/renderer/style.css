@@ -504,3 +504,9 @@ body.sb-open #viewport { left: 190px; }
 .spinner { width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; display: inline-block; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .hook-run .st.err { color: var(--danger); }
+
+.git-banner { display: flex; flex-direction: column; gap: 4px; padding: 6px 8px; border-radius: 6px; background: #ff9f0a22; color: var(--warning); font-size: 12px; }
+.change.conflicted .st { color: var(--danger); }
+.commit-row.sel { background: var(--accent-soft); }
+.commit-subject { font-weight: 600; margin-bottom: 4px; }
+.commit-body { white-space: pre-wrap; margin-bottom: 6px; color: var(--fg-muted); }
