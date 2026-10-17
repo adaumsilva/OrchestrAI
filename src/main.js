@@ -17,6 +17,7 @@ const accounts = require('./services/accounts');
 const storage = require('./services/storage');
 storage.applyPointer(app); // honour a moved data folder before anything reads userData
 let store = null;
+let lifecycle = null;
 filesExtra.registerSchemes(); // must run before the app is ready
 
 const ptys = new Map();
@@ -45,8 +46,12 @@ function createWindow() {
   win.setMenuBarVisibility(false);
   win.setIcon?.(tray.makeIcon(64));
   if (process.env.ORCH_DEBUG) win.webContents.on('console-message', (_e, level, message, line, src) => console.log(`[renderer:${level}] ${message} (${path.basename(src)}:${line})`));
-  win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  lifecycle?.guard(win);
+  loadApp();
 }
+
+const loadApp = () => win && !win.isDestroyed() && win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+const loadRecovery = (reason) => win && !win.isDestroyed() && win.loadFile(path.join(__dirname, 'renderer', 'recovery.html'), { query: { reason } });
 
 // Portals load arbitrary sites in <webview>; keep them unprivileged.
 app.on('web-contents-created', (_e, contents) => {
@@ -200,6 +205,8 @@ require('./services/templates').register(ipcMain, getWin);
 shells.register(ipcMain, require('electron').shell);
 require('./services/tmux').register(ipcMain);
 require('./services/portal').register(ipcMain);
+require('./services/updates').register(ipcMain, getWin);
+lifecycle = require('./services/lifecycle').register(ipcMain, { app, dialog: require('electron').dialog, shell: require('electron').shell, getWin, ptys, storage, loadApp, loadRecovery });
 accounts.register(ipcMain);
 store = storage.register(ipcMain, { app, session: require('electron').session, shell: require('electron').shell, getWin });
 require('./services/sandboxes').register(ipcMain);
