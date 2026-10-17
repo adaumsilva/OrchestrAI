@@ -136,6 +136,20 @@ async function bridgeHandle(method, p, from, scope) {
       const lines = (t.entry?.api.readScreen?.() || '').split('\n');
       return lines.slice(-Math.max(1, Math.min(2000, Number(p.lines) || 60))).join('\n');
     }
+    case 'routine-list': {
+      const { routines } = await call('routines:list');
+      return routines.map((r) => ({ id: r.id, name: r.name, schedule: describeSchedule(r.schedule), enabled: r.enabled, next: r.nextRun ? new Date(r.nextRun).toLocaleString() : '', target: r.target.newTerminal ? 'new terminal' : (allTerminals().find((t) => t.node.id === r.target.terminalId)?.node.title || '?') }));
+    }
+    case 'routine-add': {
+      const target = p.target ? { terminalId: findTerminal(p.target).node.id } : { newTerminal: { name: p.name || 'Routine', command: p.command || '' } };
+      const res = await call('routines:save', { name: p.name, text: p.text || '', target, schedule: p.schedule, enabled: true });
+      if (!res.ok) throw new Error(res.error);
+      return { id: res.routine.id };
+    }
+    case 'routine-remove': {
+      await call('routines:remove', String(p.id));
+      return { ok: true };
+    }
     case 'close': {
       const t = findTerminal(p.target);
       if (t.node.id === caller.node.id) throw new Error('A Maestro cannot close itself.');

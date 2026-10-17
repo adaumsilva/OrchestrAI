@@ -14,6 +14,10 @@ Usage:
   orchestrai read <terminal> [--lines N]        Print the last N lines (default 60) of a terminal's screen
   orchestrai close <terminal>                   Close a terminal
   orchestrai roles                              List the available roles
+  orchestrai routine list                       List scheduled routines
+  orchestrai routine add --name N --text T [--target TERMINAL] (--every MIN | --daily HH:MM | --weekly mon,wed --at HH:MM | --once YYYY-MM-DDTHH:MM)
+                                                Schedule text for a terminal (or a new one when --target is omitted; add --command C)
+  orchestrai routine remove <id>                Delete a routine
 
 Terminals joined to this one by a rope (any terminal, Maestro or not):
   orchestrai peers                              List the connected terminals
@@ -35,6 +39,19 @@ function parse(argv) {
     } else positional.push(a);
   }
   return { positional, flags };
+}
+
+const DAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+function scheduleFromFlags(f) {
+  if (f.every) return { kind: 'every', minutes: Number(f.every) };
+  if (f.daily) return { kind: 'daily', time: f.daily };
+  if (f.weekly) {
+    const days = f.weekly.split(',').map((d) => DAYS.indexOf(d.trim().toLowerCase().slice(0, 3)));
+    if (days.includes(-1)) throw new Error('--weekly takes weekday names like mon,wed');
+    return { kind: 'weekly', days, time: f.at || '09:00' };
+  }
+  if (f.once) return { kind: 'once', at: new Date(f.once).getTime() };
+  throw new Error('Give a schedule: --every MIN, --daily HH:MM, --weekly mon,wed --at HH:MM or --once YYYY-MM-DDTHH:MM');
 }
 
 function rpc(method, params) {
@@ -95,6 +112,20 @@ function table(rows, cols) {
       case 'close': {
         if (!rest[0]) throw new Error('Usage: orchestrai close <terminal>');
         await rpc('close', { target: rest[0] });
+        break;
+      }
+      case 'routine': {
+        const [sub, ...args] = rest;
+        if (sub === 'list') {
+          const list = await rpc('routine-list', {});
+          console.log(flags.json ? JSON.stringify(list, null, 2) : table(list, ['id', 'name', 'schedule', 'enabled', 'next', 'target']));
+        } else if (sub === 'remove') {
+          if (!args[0]) throw new Error('Usage: orchestrai routine remove <id>');
+          await rpc('routine-remove', { id: args[0] });
+        } else if (sub === 'add') {
+          if (!flags.name) throw new Error('Usage: orchestrai routine add --name N --text T ...');
+          console.log((await rpc('routine-add', { name: flags.name, text: flags.text, target: flags.target, command: flags.command, schedule: scheduleFromFlags(flags) })).id);
+        } else throw new Error('Usage: orchestrai routine list | add | remove');
         break;
       }
       case 'peers': {

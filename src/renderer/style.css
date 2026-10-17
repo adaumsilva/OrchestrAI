@@ -404,3 +404,14 @@ webview { flex: 1; min-height: 0; background: #fff; border-radius: 6px; }
 .pal-group, .pal-row kbd { margin-left: auto; flex: none; font-size: 11px; color: var(--fg-subtle); }
 .pal-row kbd { font-family: var(--mono); border: 1px solid var(--border-strong); border-radius: 4px; padding: 1px 5px; }
 .pal-empty { padding: 14px; color: var(--fg-subtle); text-align: center; }
+
+/* Routines */
+.routine-row { display: flex; align-items: center; gap: 8px; padding: 8px; border-bottom: 1px solid var(--border); }
+.routine-row.off { opacity: .55; }
+.routine-main { flex: 1; min-width: 0; }
+.routine-text { color: var(--fg-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.routine-hist { display: flex; gap: 10px; align-items: baseline; padding: 4px 8px; border-bottom: 1px solid var(--border); }
+.routine-hist .rh-out { width: 52px; font-size: 11px; text-transform: uppercase; color: var(--success); }
+.routine-hist.missed .rh-out { color: var(--warning); }
+.routine-hist.failed .rh-out { color: var(--danger); }
+.rh-snip { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }

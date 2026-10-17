@@ -179,6 +179,7 @@ device.register(ipcMain);
 data.register(ipcMain, getWin);
 require('./services/maestri').register(ipcMain);
 require('./services/usage').register(ipcMain);
+require('./services/routines').register(ipcMain, getWin);
 shells.register(ipcMain, require('electron').shell);
 require('./services/tmux').register(ipcMain);
 ipcMain.handle('app:attentionCount', (_e, n) => tray.setAttention(n));
@@ -194,5 +195,6 @@ app.on('window-all-closed', () => {
   chat.killAll();
   data.backupNow();
   bridge.stop();
+  require('./services/routines').stop();
   app.quit();
 });
