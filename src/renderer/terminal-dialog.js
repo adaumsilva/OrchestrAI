@@ -36,6 +36,7 @@ async function terminalDialog({ mode, floor, node }) {
     fontFamily: d.fontFamily || '',
     fontSize: d.fontSize || 0,
     roleId: d.roleId || '',
+    accountId: d.accountId || '',
   };
   let tab = 'details';
   let roleEditor = null; // { id?, name, instructions } while creating or editing a role
@@ -75,6 +76,19 @@ async function terminalDialog({ mode, floor, node }) {
     }
   }
 
+  // Which account the agent CLI runs on: the provider's default, one of its accounts, or the plain environment.
+  function accountField() {
+    const kind = accountProviderFor(draft.command);
+    const mine = accountsCache.accounts.filter((a) => !kind || a.provider === kind || a.provider === 'custom');
+    if (!accountsCache.accounts.length) return null;
+    const def = kind && accountsCache.defaults[kind] ? accountsCache.accounts.find((a) => a.id === accountsCache.defaults[kind]) : null;
+    const sel = h('select', { onchange: (e) => { draft.accountId = e.target.value; } },
+      h('option', { value: '', selected: !draft.accountId }, def ? `Default (${def.name})` : 'Default (my environment)'),
+      h('option', { value: 'none', selected: draft.accountId === 'none' }, 'None (my environment)'),
+      mine.map((a) => h('option', { value: a.id, selected: draft.accountId === a.id }, `${a.name} · ${accountsCache.providers[a.provider]?.label || a.provider}`)));
+    return sheetField('Account', sel, 'Takes effect the next time the terminal starts. Local terminals only.');
+  }
+
   // "Keep running after quit" needs tmux, so it is offered for Local, WSL and SSH only.
   function persistRow() {
     const k = draft.runsOn.kind;
@@ -110,6 +124,7 @@ async function terminalDialog({ mode, floor, node }) {
       sheetField('Command', commandInput),
       h('div', { class: 'sheet-field' }, h('div', { class: 'toggle-row' }, h('div', { class: 'sheet-label' }, 'Runs on'), runs), runsOnFields() || (draft.runsOn.kind === 'default' ? h('div', { class: 'sheet-hint' }, fallback.label + (terminalSettings().profileId ? ' (changed in Settings)' : '')) : null)),
       sheetField('Working Directory', h('div', { class: 'row' }, cwdInput, browse)),
+      accountField(),
       toggleRow('Monitor Activity', 'Detect terminal output and notify you when work finishes.', switchEl(draft.monitor, (v) => { draft.monitor = v; })),
       persistRow(),
       toggleRow(h('span', {}, 'Maestro ', infoBtn), 'Promotes this terminal to a conductor that can direct the rest of the canvas.', switchEl(draft.maestro, (v) => { draft.maestro = v; })),
@@ -230,14 +245,14 @@ async function terminalDialog({ mode, floor, node }) {
       runsOn: r.kind === 'default' ? undefined : { ...r, host: r.host?.trim(), user: r.user?.trim(), container: r.container?.trim() },
       cwd: draft.cwd.trim() === (floor.dir || '') ? '' : draft.cwd.trim(),
       monitor: draft.monitor, maestro: draft.maestro, persist: draft.persist,
-      icon: draft.icon, color: draft.color, theme: draft.theme, fontFamily: draft.fontFamily, fontSize: draft.fontSize || 0, roleId: draft.roleId,
+      icon: draft.icon, color: draft.color, theme: draft.theme, fontFamily: draft.fontFamily, fontSize: draft.fontSize || 0, roleId: draft.roleId, accountId: draft.accountId,
     };
     closeModal();
     if (isNew) {
       addNode('terminal', { title, data }, floor);
       return;
     }
-    const launchKey = (x) => JSON.stringify([x.command || '', x.runsOn || null, x.cwd || '', !!x.maestro, x.roleId || '', !!x.persist]);
+    const launchKey = (x) => JSON.stringify([x.command || '', x.runsOn || null, x.cwd || '', !!x.maestro, x.roleId || '', !!x.persist, x.accountId || '']);
     const launchChanged = launchKey(node.data) !== launchKey(data);
     // Turning persistence off (or changing where it runs) leaves a tmux session behind; end it.
     const oldTarget = tmuxTarget(node);

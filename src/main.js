@@ -13,6 +13,7 @@ const bridge = require('./services/bridge');
 const tray = require('./services/tray');
 const procstats = require('./services/procstats');
 const filesExtra = require('./services/files-extra');
+const accounts = require('./services/accounts');
 filesExtra.registerSchemes(); // must run before the app is ready
 
 const ptys = new Map();
@@ -81,7 +82,7 @@ function resolveCommand(command, args) {
 }
 
 // profile: { command, args, cdFlag }; env: extra variables for this terminal.
-ipcMain.handle('pty:spawn', (_e, { id, cwd, cols, rows, profile, env, maestro, peer }) => {
+ipcMain.handle('pty:spawn', (_e, { id, cwd, cols, rows, profile, env, maestro, peer, accountId }) => {
   if (ptys.has(id)) return { ok: true, reused: true };
   const dir = cwd && fs.existsSync(cwd) ? cwd : process.env.USERPROFILE || process.env.HOME;
   let args = Array.isArray(profile?.args) ? [...profile.args] : [];
@@ -100,7 +101,7 @@ ipcMain.handle('pty:spawn', (_e, { id, cwd, cols, rows, profile, env, maestro, p
       cols: cols || 80,
       rows: rows || 24,
       cwd: profile?.cdFlag ? undefined : dir,
-      env: { ...process.env, ...(env || {}), TERM_PROGRAM: 'OrchestrAI', ...(maestro || peer ? bridge.envFor(id, path.join(__dirname, '..', 'bin'), maestro ? 'maestro' : 'peer') : {}) },
+      env: { ...process.env, ...(env || {}), ...accounts.envFor(accountId), TERM_PROGRAM: 'OrchestrAI', ...(maestro || peer ? bridge.envFor(id, path.join(__dirname, '..', 'bin'), maestro ? 'maestro' : 'peer') : {}) },
     });
   } catch (err) {
     return { ok: false, error: `${requested}: ${String(err.message || err)}` };
@@ -194,6 +195,7 @@ require('./services/templates').register(ipcMain, getWin);
 shells.register(ipcMain, require('electron').shell);
 require('./services/tmux').register(ipcMain);
 require('./services/portal').register(ipcMain);
+accounts.register(ipcMain);
 ipcMain.handle('app:attentionCount', (_e, n) => tray.setAttention(n));
 ipcMain.on('pty:killAll', () => { for (const p of ptys.values()) p.kill(); ptys.clear(); });
 

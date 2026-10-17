@@ -161,6 +161,7 @@ NodeKinds.terminal = {
     async function start() {
       exited = false;
       setStatus('starting');
+      if (typeof accountsReady !== 'undefined') await accountsReady;
       const { profile, typed, remote, notice, reattached } = await resolveLaunch(node);
       const label = profile?.label || (await loadProfiles()).fallback.label;
       if (profileBtn) profileBtn.textContent = label + ' ▾';
@@ -175,6 +176,7 @@ NodeKinds.terminal = {
       const startDir = node.data.cwd || cwd();
       const r = await call('pty:spawn', {
         id: node.id, cols: term.cols, rows: term.rows, profile,
+        accountId: remote || profile?.cdFlag ? undefined : effectiveAccountId(node),
         cwd: remote ? undefined : startDir,
         maestro: !!node.data.maestro && !remote && !(profile?.cdFlag),
         peer: !remote && !(profile?.cdFlag),
