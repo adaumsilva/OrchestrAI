@@ -35,6 +35,15 @@ app.whenReady().then(async () => {
       wc.sendInputEvent({ type: 'mouseUp', x, y, button: 'left', clickCount: 1 });
       await sleep(80);
     },
+    // The app saves a moment after a change; wait until the saved file satisfies `pred` (or give up after ~8 s and return what is there).
+    async readSaved(pred = () => true) {
+      let saved = null;
+      for (let i = 0; i < 32; i++) {
+        try { saved = JSON.parse(fs.readFileSync(path.join(dataDir, 'workspace.json'), 'utf8')); if (pred(saved)) return saved; } catch {}
+        await sleep(250);
+      }
+      return saved;
+    },
     results: [],
     check(name, ok, info) { this.results.push({ name, ok: !!ok }); console.log(`${ok ? 'PASS' : 'FAIL'} ${name}${ok ? '' : ' ' + (info === undefined ? '' : JSON.stringify(info))}`); },
   };

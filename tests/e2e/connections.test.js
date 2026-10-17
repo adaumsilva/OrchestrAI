@@ -52,8 +52,7 @@ module.exports = async (t) => {
   await t.sleep(600);
   const tied = await t.js(`(() => { const f = activeFloor(); const r = f.ropes[0]; const s = sims.get(r.id); return { pin: r.pin, passes: !!s.circuit && s.circuit.some((p, i) => i && Math.min(s.circuit[i - 1].x, p.x) - 1 <= r.pin.x && r.pin.x <= Math.max(s.circuit[i - 1].x, p.x) + 1 && Math.min(s.circuit[i - 1].y, p.y) - 1 <= r.pin.y && r.pin.y <= Math.max(s.circuit[i - 1].y, p.y) + 1), handle: s.dom.pinEl.style.display }; })()`);
   t.check('dragging a rope ties it at the drop point', tied.pin && tied.passes && tied.handle !== 'none', tied);
-  await t.sleep(700);
-  const saved = JSON.parse(fs.readFileSync(path.join(t.dataDir, 'workspace.json'), 'utf8'));
+  const saved = await t.readSaved((s) => s.workspaces[0].floors[0].ropes.some((r) => r.pin));
   t.check('the tie is saved with the rope', saved.workspaces[0].floors[0].ropes.some((r) => r.pin && r.pin.x === tied.pin.x), saved.workspaces[0].floors[0].ropes);
 
   // a plain click on a rope must not tie it

@@ -45,8 +45,7 @@ module.exports = async (t) => {
   t.check('the new combo triggers it', (await press('T', ['control', 'shift'])) === 2);
 
   // ---- persistence ----
-  await t.sleep(700);
-  const saved = JSON.parse(fs.readFileSync(path.join(t.dataDir, 'workspace.json'), 'utf8'));
+  const saved = await t.readSaved((s) => s.settings && s.settings.shortcuts && s.settings.shortcuts.tidy);
   t.check('the binding is saved with the settings', saved.settings.shortcuts.tidy === 'Ctrl+Shift+T', saved.settings.shortcuts);
 
   // ---- unbind and reset ----

@@ -72,7 +72,7 @@ module.exports = async (t) => {
 
   // ---- persisted ----
   await t.js(`state.settings.language = 'pt'; save(); 0`);
-  await t.sleep(700);
-  const saved = JSON.parse(fs.readFileSync(path.join(t.dataDir, 'workspace.json'), 'utf8'));
-  t.check('the choice is saved with the settings', saved.settings.language === 'pt');
+  let saved = null;
+  for (let i = 0; i < 30 && !(saved && saved.settings && saved.settings.language === 'pt'); i++) { await t.sleep(250); try { saved = JSON.parse(fs.readFileSync(path.join(t.dataDir, 'workspace.json'), 'utf8')); } catch {} }
+  t.check('the choice is saved with the settings', saved && saved.settings.language === 'pt');
 };

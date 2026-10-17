@@ -72,8 +72,7 @@ module.exports = async (t) => {
   t.check('duplicate with a worktree gets its own branch and folder', dup2 && dup2.repo && dup2.branch && dup2.dir && dup2.branch !== wt.branch && dup2.dir !== wt.dir && fs.existsSync(dup2.dir), dup2);
 
   // persisted
-  await t.sleep(700);
-  const saved = JSON.parse(fs.readFileSync(path.join(t.dataDir, 'workspace.json'), 'utf8'));
+  const saved = await t.readSaved((s) => s.workspaces[0].floors.some((f) => f.name === 'Feat' && f.hookRuns && f.hookRuns.length));
   const sf = saved.workspaces[0].floors.find((f) => f.name === 'Feat');
   t.check('status and hook history are saved', sf && sf.hookRuns.length === 1 && sf.status.text === 'from agent', sf && { runs: sf.hookRuns, status: sf.status });
 
