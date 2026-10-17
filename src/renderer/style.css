@@ -550,3 +550,7 @@ body.sb-open #viewport { left: 190px; }
 .usage-bar { height: 6px; border-radius: 3px; background: var(--hover); overflow: hidden; }
 .usage-bar > span { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
 .usage-size { text-align: right; font-size: 12px; }
+
+.shortcut-row { display: grid; grid-template-columns: 1fr 190px auto auto; align-items: center; gap: 6px; padding: 2px 0; }
+.shortcut-key { font-family: var(--mono); font-size: 12px; text-align: center; }
+.shortcut-key.capturing { background: var(--accent-soft); color: var(--accent); }

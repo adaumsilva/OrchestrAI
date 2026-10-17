@@ -359,7 +359,7 @@ viewport.addEventListener('mousedown', (e) => {
 const isTyping = (t) => t && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName));
 addEventListener('keydown', (e) => {
   if (e.key === 'Escape') { cancelConnect(); return; }
-  if ((e.key === 'c' || e.key === 'C') && !e.ctrlKey && !e.metaKey && !e.altKey && !isTyping(e.target) && !document.getElementById('modal-root').firstChild) {
+  if (shortcutMatch(e, 'connect') && !isTyping(e.target) && !document.getElementById('modal-root').firstChild) {
     const f = activeFloor();
     const n = f && selectedNode(f);
     if (n && !connecting) { e.preventDefault(); startConnect(f, n.id); }

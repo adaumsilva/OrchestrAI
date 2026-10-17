@@ -173,7 +173,7 @@ function toggleTaskManager(force) {
 
 tmBtn.onclick = () => toggleTaskManager();
 addEventListener('keydown', (e) => {
-  if (e.key.toLowerCase() !== 'k' || e.ctrlKey || e.metaKey || e.altKey || modalOpen() || isTyping(e.target)) return;
+  if (!shortcutMatch(e, 'taskManager') || modalOpen() || isTyping(e.target)) return;
   toggleTaskManager();
 });
 addEventListener('terminal-status', () => { if (tmOpen()) renderTaskManager(); });

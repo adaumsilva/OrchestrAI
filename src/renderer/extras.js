@@ -150,34 +150,35 @@ mmCanvas.addEventListener('mousedown', (e) => {
 });
 
 // ---------- shortcuts ----------
-const SHORTCUTS = [
+// Rebuilt each time the dialog opens so rebound keys show up.
+const shortcutHelp = () => [
   ['Pan', 'Drag the background'],
   ['Zoom', 'Scroll wheel, or the − / + buttons'],
   ['Move a node', 'Drag its header, or Alt+drag anywhere on it'],
   ['Select several', 'Ctrl+click, Shift+click a header, or Shift+drag a box on the canvas'],
-  ['Select all', 'Ctrl+A'],
-  ['Prompter', 'P opens the composer: @ completes terminals, floors and files; paste images; Ctrl+Enter sends'],
-  ['Connect nodes', 'Select a node, press C, click another node (Esc cancels)'],
+  ['Select all', shortcutLabel('selectAll')],
+  ['Prompter', `${shortcutLabel('prompter')} opens the composer: @ completes terminals, floors and files; paste images; Ctrl+Enter sends`],
+  ['Connect nodes', `Select a node, press ${shortcutLabel('connect')}, click another node (Esc cancels)`],
   ['Remove a connection', 'Hover the rope and click ×'],
-  ['Tidy', 'T arranges the selection, or all nodes'],
-  ['Minimap', 'M'],
-  ['Terminals overview', 'L lists every terminal with its status; click one to jump to it'],
-  ['Task manager', 'K shows what each terminal is running, with CPU, memory and time; sort, interrupt or restart from there'],
-  ['Delete selection', 'Delete or Backspace'],
-  ['Undo / redo', 'Ctrl+Z / Ctrl+Shift+Z (nodes, ropes, layout)'],
-  ['Next / previous node', 'Alt+] / Alt+['],
-  ['Next / previous floor', 'Ctrl+PageDown / Ctrl+PageUp'],
-  ['Group nodes', 'Ctrl+G groups the selection in a colored frame (Ctrl+Shift+G ungroups); moving the frame moves its nodes'],
-  ['Command palette', 'Ctrl+K searches commands, nodes on every floor, floors and presets; Enter runs, Esc closes'],
-  ['Shortcuts', '?'],
+  ['Tidy', `${shortcutLabel('tidy')} arranges the selection, or all nodes`],
+  ['Minimap', shortcutLabel('minimap')],
+  ['Terminals overview', `${shortcutLabel('terminalsPanel')} lists every terminal with its status; click one to jump to it`],
+  ['Task manager', `${shortcutLabel('taskManager')} shows what each terminal is running, with CPU, memory and time; sort, interrupt or restart from there`],
+  ['Delete selection', shortcutLabel('deleteSelection')],
+  ['Undo / redo', `${shortcutLabel('undo')} / ${shortcutLabel('redo')} (nodes, ropes, layout)`],
+  ['Next / previous node', `${shortcutLabel('nextNode')} / ${shortcutLabel('prevNode')}`],
+  ['Next / previous floor', `${shortcutLabel('nextFloor')} / ${shortcutLabel('prevFloor')}`],
+  ['Group nodes', `${shortcutLabel('group')} groups the selection in a colored frame (${shortcutLabel('ungroup')} ungroups); moving the frame moves its nodes`],
+  ['Command palette', `${shortcutLabel('palette')} searches commands, nodes on every floor, floors and presets; Enter runs, Esc closes`],
+  ['Shortcuts', shortcutLabel('help')],
 ];
 
 function helpDialog() {
   modal({
     title: 'Keyboard & mouse',
     content: h('div', { style: 'display:grid;grid-template-columns:auto 1fr;gap:6px 16px' },
-      SHORTCUTS.flatMap(([a, b]) => [h('span', { class: 'muted' }, a), h('span', {}, b)])),
-    actions: [{ label: 'Close', primary: true, onClick: (c) => c() }],
+      shortcutHelp().flatMap(([a, b]) => [h('span', { class: 'muted' }, a), h('span', {}, b)])),
+    actions: [{ label: 'Customize…', onClick: () => { closeModal(); shortcutsDialog(); } }, { label: 'Close', primary: true, onClick: (c) => c() }],
   });
 }
 
@@ -186,16 +187,16 @@ addEventListener('keydown', (e) => {
   const f = activeFloor();
   if (!f) return;
   // These also work while a terminal has focus (terminal.js lets them through).
-  if (e.altKey && (e.key === '[' || e.key === ']')) { e.preventDefault(); cycleNode(f, e.key === ']' ? 1 : -1); return; }
-  if (e.ctrlKey && (e.key === 'PageDown' || e.key === 'PageUp')) { e.preventDefault(); cycleFloor(e.key === 'PageDown' ? 1 : -1); return; }
+  if (shortcutMatch(e, 'nextNode')) { e.preventDefault(); cycleNode(f, 1); return; }
+  if (shortcutMatch(e, 'prevNode')) { e.preventDefault(); cycleNode(f, -1); return; }
+  if (shortcutMatch(e, 'nextFloor')) { e.preventDefault(); cycleFloor(1); return; }
+  if (shortcutMatch(e, 'prevFloor')) { e.preventDefault(); cycleFloor(-1); return; }
   if (isTyping(e.target)) return;
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') { e.preventDefault(); selectAll(); return; }
-  if (e.ctrlKey || e.metaKey || e.altKey) return;
-  const k = e.key.toLowerCase();
-  if (k === 't') tidy();
-  else if (k === 'm') toggleMinimap();
-  else if (e.key === '?') helpDialog();
-  else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSelection(); }
+  if (shortcutMatch(e, 'selectAll')) { e.preventDefault(); selectAll(); return; }
+  if (shortcutMatch(e, 'tidy')) tidy();
+  else if (shortcutMatch(e, 'minimap')) toggleMinimap();
+  else if (shortcutMatch(e, 'help')) helpDialog();
+  else if (shortcutMatch(e, 'deleteSelection')) { e.preventDefault(); deleteSelection(); }
 });
 
 // ---------- workspace dialog (export, import, backups) ----------

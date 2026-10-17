@@ -109,9 +109,8 @@ function updateHistoryButtons() {
 document.getElementById('undo-btn').onclick = () => stepHistory(-1);
 document.getElementById('redo-btn').onclick = () => stepHistory(1);
 addEventListener('keydown', (e) => {
-  if (!(e.ctrlKey || e.metaKey) || e.altKey || isTyping(e.target) || document.getElementById('modal-root').firstChild) return;
-  const k = e.key.toLowerCase();
-  if (k === 'z' && !e.shiftKey) { e.preventDefault(); stepHistory(-1); }
-  else if ((k === 'z' && e.shiftKey) || k === 'y') { e.preventDefault(); stepHistory(1); }
+  if (isTyping(e.target) || document.getElementById('modal-root').firstChild) return;
+  if (shortcutMatch(e, 'undo')) { e.preventDefault(); stepHistory(-1); }
+  else if (shortcutMatch(e, 'redo')) { e.preventDefault(); stepHistory(1); }
 });
 updateHistoryButtons();

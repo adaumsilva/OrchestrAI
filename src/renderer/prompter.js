@@ -138,7 +138,7 @@ function prompterDialog({ floor: f = activeFloor(), text = '', targets } = {}) {
 }
 
 addEventListener('keydown', (e) => {
-  if (e.key.toLowerCase() !== 'p' || e.ctrlKey || e.metaKey || e.altKey || isTyping(e.target) || modalOpen()) return;
+  if (!shortcutMatch(e, 'prompter') || isTyping(e.target) || modalOpen()) return;
   const f = activeFloor();
   if (f) { e.preventDefault(); prompterDialog({ floor: f }); }
 });

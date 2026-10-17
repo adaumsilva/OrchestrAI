@@ -67,7 +67,7 @@ function toggleTerminalsPanel(force) {
 addEventListener('terminal-status', refreshTerminalsPanel);
 terminalsBtn.onclick = () => toggleTerminalsPanel();
 addEventListener('keydown', (e) => {
-  if (e.key.toLowerCase() !== 'l' || e.ctrlKey || e.metaKey || e.altKey || modalOpen() || isTyping(e.target)) return;
+  if (!shortcutMatch(e, 'terminalsPanel') || modalOpen() || isTyping(e.target)) return;
   toggleTerminalsPanel();
 });
 // Nodes are added, renamed and removed without a status event; poll cheaply while the panel is open.

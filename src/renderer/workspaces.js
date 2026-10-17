@@ -145,9 +145,10 @@ async function workspaceDialog2(w) {
 
 // Ctrl+Alt+PageUp / PageDown cycle workspaces (before the floor shortcut sees the same keys).
 addEventListener('keydown', (e) => {
-  if (!(e.ctrlKey && e.altKey && (e.key === 'PageDown' || e.key === 'PageUp'))) return;
+  const dir = shortcutMatch(e, 'nextWorkspace') ? 1 : shortcutMatch(e, 'prevWorkspace') ? -1 : 0;
+  if (!dir) return;
   e.preventDefault(); e.stopImmediatePropagation();
-  cycleWorkspace(e.key === 'PageDown' ? 1 : -1);
+  cycleWorkspace(dir);
 }, true);
 
 document.getElementById('sidebar-btn').onclick = toggleSidebar;

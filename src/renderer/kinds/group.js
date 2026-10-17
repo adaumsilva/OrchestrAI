@@ -88,10 +88,11 @@ NodeKinds.group = {
 };
 
 addEventListener('keydown', (e) => {
-  if (!(e.ctrlKey || e.metaKey) || e.altKey || e.key.toLowerCase() !== 'g') return;
+  const grouping = shortcutMatch(e, 'group'), ungrouping = shortcutMatch(e, 'ungroup');
+  if (!grouping && !ungrouping) return;
   if (isTyping(e.target) || modalOpen()) return;
   e.preventDefault();
-  if (e.shiftKey) ungroupSelection(); else groupSelection();
+  if (ungrouping) ungroupSelection(); else groupSelection();
 });
 
 registerCommand({ id: 'group', label: 'Group selection', hint: 'Ctrl+G', run: () => groupSelection() });

@@ -149,8 +149,7 @@ async function pickNode(opts = {}) {
 }
 
 addEventListener('keydown', (e) => {
-  const isOpen = (e.ctrlKey || e.metaKey) && !e.altKey && ((e.key.toLowerCase() === 'k' && !e.shiftKey) || (e.shiftKey && e.key.toLowerCase() === 'p'));
-  if (!isOpen) return;
+  if (!shortcutMatch(e, 'palette')) return;
   if (modalOpen() && !paletteEl) return;
   e.preventDefault();
   if (paletteEl) closePalette(null); else openPalette();

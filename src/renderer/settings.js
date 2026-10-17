@@ -44,6 +44,7 @@ function normalizeSettings() {
   state.settings.presets = Array.isArray(state.settings.presets) ? state.settings.presets : DEFAULT_PRESETS.map((p) => ({ ...p }));
   state.settings.roles = Array.isArray(state.settings.roles) ? state.settings.roles : DEFAULT_ROLES.map((r) => ({ ...r }));
   state.scrollback = state.scrollback || {};
+  state.settings.shortcuts = state.settings.shortcuts && typeof state.settings.shortcuts === 'object' ? state.settings.shortcuts : {};
 }
 
 const terminalSettings = () => state.settings?.terminal || TERMINAL_DEFAULTS;
@@ -373,6 +374,8 @@ async function settingsDialog() {
       h('div', { class: 'muted', style: 'margin-top:8px' }, 'Quick start presets'),
       presetNote, presetRows,
       h('div', {}, h('button', { onclick: () => { presets.push({ id: `preset-${uid()}`, name: 'New preset', command: '', icon: '○', active: presets.filter((p) => p.active).length < MAX_ACTIVE_PRESETS }); renderPresets(); } }, '+ Add preset')),
+      h('div', { class: 'muted', style: 'margin-top:8px' }, 'Keyboard'),
+      h('div', {}, h('button', { onclick: () => { closeModal(); shortcutsDialog(); } }, 'Customize shortcuts…')),
       h('div', { class: 'muted', style: 'margin-top:8px' }, 'Accounts'),
       h('div', {}, h('button', { onclick: () => { closeModal(); accountsDialog(); } }, 'Manage accounts…')),
       h('div', { class: 'muted', style: 'margin-top:8px' }, 'Agent skills'),
