@@ -91,11 +91,12 @@ NodeKinds.note = {
 
     function refreshBar() {
       const file = d.file ? d.file.split(/[\\/]/).pop() : '';
-      bar.replaceChildren(
+      bar.replaceChildren(...[
         h('button', { class: d.mode !== 'preview' ? 'on' : '', onclick: () => setMode('edit') }, 'Edit'),
         h('button', { class: d.mode === 'preview' ? 'on' : '', onclick: () => setMode('preview') }, 'Preview'),
         file ? h('span', { class: 'note-file' + (bar.dataset.err || bar.dataset.conflict ? ' bad' : ''), title: bar.dataset.err || d.file }, '📄 ' + file + (dirty ? ' •' : '')) : null,
-        bar.dataset.conflict ? h('button', { title: 'The file changed on disk while you had unsaved edits', onclick: () => { delete bar.dataset.conflict; dirty = false; reloadFile(); } }, 'Reload from disk') : null);
+        bar.dataset.conflict ? h('button', { title: 'The file changed on disk while you had unsaved edits', onclick: () => { delete bar.dataset.conflict; dirty = false; reloadFile(); } }, 'Reload from disk') : null,
+      ].filter(Boolean));
       tint();
     }
 

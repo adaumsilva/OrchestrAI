@@ -41,6 +41,14 @@ If you launch from a VS Code or Claude Code shell, unset `ELECTRON_RUN_AS_NODE` 
 ## Screenshots
 ![Task manager showing Claude Code and Codex running, with CPU, memory, tokens and limits](docs/images/tasks.png)
 
+![Terminals and notes inside a colored group, joined by dashed ropes](docs/images/ropes-groups.png)
+
+![Command palette searching across workspaces, with the workspaces sidebar open](docs/images/palette-workspaces.png)
+
+![The terminal settings sheet](docs/images/terminal-sheet.png)
+
+Regenerate them with `ORCH_TEST=tests/e2e/screenshots.script.js electron tests/e2e/entry.js`.
+
 ## Contributing
 Contributions are welcome, including your first one.
 - Browse [good first issues](https://github.com/adaumsilva/OrchestrAI/labels/good%20first%20issue) and [help wanted](https://github.com/adaumsilva/OrchestrAI/labels/help%20wanted).

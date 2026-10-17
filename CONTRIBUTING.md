@@ -22,7 +22,7 @@ If your shell sets `ELECTRON_RUN_AS_NODE=1` (VS Code and Claude Code terminals d
 - No new dependencies without discussion.
 
 ## Verifying changes
-Check UI changes in the running app with real input. The existing end-to-end scripts drive Electron through `webContents.sendInputEvent` and `executeJavaScript`, use a temporary `userData` directory (never your real profile) and set `ORCH_NO_TRAY=1` and `ORCH_DEBUG=1`. Committing them to `tests/e2e/` is tracked in the roadmap. Describe in your PR how you verified the change.
+Check UI changes in the running app with real input. Run `npm test`: unit tests in `tests/unit/` run under plain node, and each `tests/e2e/*.test.js` runs in its own Electron process (`tests/e2e/entry.js`) against a temporary `userData` directory, driving the app with real input events and `executeJavaScript`. Add an e2e test next to the feature you change; `npm run test:e2e -- <name>` runs a subset. A check that proves flaky goes to `tests/quarantine/` with a comment saying why, never deleted silently. Describe in your PR how you verified the change.
 
 ## Originality
 OrchestrAI is independent. Features are described in our own words in [docs/roadmap/issues.md](docs/roadmap/issues.md). Do not copy source code, assets or strings from other products.
