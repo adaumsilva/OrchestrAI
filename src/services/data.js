@@ -81,6 +81,10 @@ function register(ipcMain, getWin) {
       return { error: e.message };
     }
   });
+  ipcMain.handle('data:deleteBackup', (_e, name) => {
+    if (typeof name !== 'string' || name !== path.basename(name) || !name.endsWith('.json')) return { ok: false, error: 'Invalid backup name' };
+    try { fs.rmSync(path.join(backupDir(), name), { force: true }); return { ok: true }; } catch (e) { return { ok: false, error: e.message }; }
+  });
   ipcMain.handle('data:backupNow', () => backupNow());
   ipcMain.handle('data:revealBackups', () => {
     fs.mkdirSync(backupDir(), { recursive: true });

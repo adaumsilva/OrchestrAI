@@ -545,3 +545,8 @@ body.sb-open #viewport { left: 190px; }
 .rope-pin { fill: var(--card); stroke: var(--accent); stroke-width: 2; cursor: grab; pointer-events: all; }
 .rope-pin:hover { fill: var(--accent); }
 .conn-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 4px; border-bottom: 1px solid var(--border); }
+
+.usage-row { display: grid; grid-template-columns: 190px 1fr 80px; align-items: center; gap: 8px; padding: 2px 0; }
+.usage-bar { height: 6px; border-radius: 3px; background: var(--hover); overflow: hidden; }
+.usage-bar > span { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+.usage-size { text-align: right; font-size: 12px; }

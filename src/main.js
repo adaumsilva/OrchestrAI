@@ -14,6 +14,9 @@ const tray = require('./services/tray');
 const procstats = require('./services/procstats');
 const filesExtra = require('./services/files-extra');
 const accounts = require('./services/accounts');
+const storage = require('./services/storage');
+storage.applyPointer(app); // honour a moved data folder before anything reads userData
+let store = null;
 filesExtra.registerSchemes(); // must run before the app is ready
 
 const ptys = new Map();
@@ -153,11 +156,13 @@ ipcMain.handle('workspace:load', () => {
   try { return JSON.parse(fs.readFileSync(stateFile(), 'utf8')); } catch { return null; }
 });
 ipcMain.handle('workspace:save', (_e, data) => {
+  if (store?.isLocked()) return;
   fs.mkdirSync(path.dirname(stateFile()), { recursive: true });
   fs.writeFileSync(stateFile(), JSON.stringify(data, null, 2));
 });
 // Used on window unload, when async IPC may not get to run.
 ipcMain.on('workspace:saveSync', (e, data) => {
+  if (store?.isLocked()) { e.returnValue = true; return; }
   try { fs.mkdirSync(path.dirname(stateFile()), { recursive: true }); fs.writeFileSync(stateFile(), JSON.stringify(data, null, 2)); } catch {}
   e.returnValue = true;
 });
@@ -196,6 +201,7 @@ shells.register(ipcMain, require('electron').shell);
 require('./services/tmux').register(ipcMain);
 require('./services/portal').register(ipcMain);
 accounts.register(ipcMain);
+store = storage.register(ipcMain, { app, session: require('electron').session, shell: require('electron').shell, getWin });
 require('./services/sandboxes').register(ipcMain);
 ipcMain.handle('app:attentionCount', (_e, n) => tray.setAttention(n));
 ipcMain.on('pty:killAll', () => { for (const p of ptys.values()) p.kill(); ptys.clear(); });

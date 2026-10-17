@@ -242,7 +242,8 @@ async function workspaceDialog() {
           },
         }, 'Import…'),
         h('button', { title: 'Add a workspace saved by Maestri as a new floor', onclick: () => { closeModal(); maestriImportDialog(); } }, 'Import from Maestri…'),
-        h('button', { onclick: () => call('data:revealBackups') }, 'Open backups folder')),
+        h('button', { onclick: () => call('data:revealBackups') }, 'Open backups folder'),
+        h('button', { onclick: () => { closeModal(); storageDialog(); } }, 'Storage…')),
       h('div', { class: 'muted' }, 'Restore a backup (click to restore):'), list),
     actions: [{ label: 'Close', primary: true, onClick: (c) => c() }],
   });
