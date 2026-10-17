@@ -54,13 +54,15 @@ function start(getWin, ipcMain) {
 function envFor(terminalId, binDir, scope = 'peer') {
   for (const [t, w] of tokens) if (w.terminalId === terminalId) tokens.delete(t); // a restarted terminal gets a fresh token
   const token = crypto.randomBytes(24).toString('hex');
+  const pathKey = Object.keys(process.env).find((k) => k.toLowerCase() === 'path') || 'PATH';
   tokens.set(token, { terminalId, scope });
   return {
     ORCHESTRAI_URL: `http://127.0.0.1:${port}`,
     ORCHESTRAI_TOKEN: token,
     ORCHESTRAI_TERMINAL: terminalId,
     ORCHESTRAI_NODE: process.execPath,
-    PATH: binDir + path.delimiter + (process.env.PATH || ''),
+    // Windows calls the variable "Path"; setting a second "PATH" beside it would leave two entries and the shell may use either.
+    [pathKey]: binDir + path.delimiter + (process.env[pathKey] || ''),
   };
 }
 

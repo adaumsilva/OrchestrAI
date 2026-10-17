@@ -6,6 +6,8 @@ const fs = require('fs');
 async function run(win, outFile) {
   const result = { ok: false, checks: {}, platform: process.platform, arch: process.arch, packaged: require('electron').app.isPackaged };
   const js = (code) => win.webContents.executeJavaScript(code);
+  const binDir = require('path').join(__dirname, '..', 'bin').replace(/app.asar([\/])/, 'app.asar.unpacked$1');
+  result.bin = { dir: binDir, files: (() => { try { return fs.readdirSync(binDir); } catch (e) { return String(e.code); } })(), pathKeys: Object.keys(process.env).filter((k) => k.toLowerCase() === 'path') };
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const waitFor = async (fn, ms) => { for (let i = 0; i < ms / 250; i++) { try { const v = await fn(); if (v) return v; } catch {} await sleep(250); } return false; };
   try {
