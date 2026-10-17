@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Notification } = require('electron');
+const { app, BrowserWindow, ipcMain, Notification, clipboard } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const pty = require('node-pty');
@@ -158,6 +158,8 @@ ipcMain.on('workspace:saveSync', (e, data) => {
   try { fs.mkdirSync(path.dirname(stateFile()), { recursive: true }); fs.writeFileSync(stateFile(), JSON.stringify(data, null, 2)); } catch {}
   e.returnValue = true;
 });
+// Works regardless of which element has focus (navigator.clipboard needs a focused document).
+ipcMain.handle('app:copy', (_e, text) => { clipboard.writeText(String(text)); return true; });
 ipcMain.handle('app:notify', (_e, { title, body }) => {
   if (!Notification.isSupported()) return false;
   const n = new Notification({ title: String(title || 'OrchestrAI'), body: String(body || ''), silent: false });

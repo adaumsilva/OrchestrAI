@@ -30,7 +30,7 @@ function setSelection(f, ids) {
   ids.forEach((id) => selection.add(id));
   rt.get(f.id)?.live.forEach((e, id) => e.el.classList.toggle('selected', selection.has(id)));
 }
-const KIND_ICONS = { group: '▢', terminal: '❯_', note: '✎', stack: '🗃', files: '🗂', git: '⑂', chat: '💬', portal: '🌐', device: '📱', draw: '✏' };
+const KIND_ICONS = { link: '🔗', group: '▢', terminal: '❯_', note: '✎', stack: '🗃', files: '🗂', git: '⑂', chat: '💬', portal: '🌐', device: '📱', draw: '✏' };
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 let saveTimer;
@@ -475,7 +475,7 @@ function buildToolbar() {
     e.stopPropagation();
     if (menu) return close();
     menu = h("div", { class: "menu" }, Object.entries(NodeKinds).map(([kind, k]) =>
-      h("button", { class: "menu-item", onclick: () => { close(); if (kind === 'terminal') terminalDialog({ mode: 'new', floor: activeFloor() }); else addNode(kind); } }, h("span", { class: "ico" }, KIND_ICONS[kind] || ""), k.label)));
+      h("button", { class: "menu-item", onclick: () => { close(); if (kind === 'terminal') terminalDialog({ mode: 'new', floor: activeFloor() }); else if (kind === 'link') PALETTE_COMMANDS.find((c) => c.id === 'add-link').run(); else addNode(kind); } }, h("span", { class: "ico" }, KIND_ICONS[kind] || ""), k.label)));
     wrap.append(menu);
   };
   addEventListener("click", close);

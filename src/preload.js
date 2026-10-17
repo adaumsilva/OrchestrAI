@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 const CALL_PREFIXES = ['bridge:', 'data:', 'maestri:', 'usage:', 'git:', 'files:', 'chat:', 'device:', 'app:', 'workspace:', 'pty:', 'routines:', 'notes:', 'skills:', 'config:', 'pr:', 'ide:', 'templates:'];
 const EVENTS = ['bridge:request', 'pty:data', 'pty:exit', 'chat:data', 'chat:done', 'files:changed', 'routines:fire', 'routines:changed', 'notes:changed'];
@@ -20,4 +20,5 @@ contextBridge.exposeInMainWorld('orchestrai', {
   ptyKill: (id) => ipcRenderer.send('pty:kill', id),
   saveSync: (state) => ipcRenderer.sendSync('workspace:saveSync', state),
   ptyKillAll: () => ipcRenderer.send('pty:killAll'),
+  pathForFile: (file) => { try { return webUtils.getPathForFile(file); } catch { return ''; } }, // dropped files
 });

@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { app, dialog } = require('electron');
+const { app, dialog, shell } = require('electron');
 
 const imageDir = () => path.join(app.getPath('userData'), 'note-images');
 const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', bmp: 'image/bmp' };
@@ -28,6 +28,8 @@ function register(ipcMain, getWin) {
     if (!mime || n !== name) return null;
     try { return `data:${mime};base64,${(await fs.promises.readFile(path.join(imageDir(), n))).toString('base64')}`; } catch { return null; }
   });
+
+  ipcMain.handle('notes:openImage', (_e, name) => { const n = path.basename(String(name)); return n === name ? shell.openPath(path.join(imageDir(), n)) : 'Invalid image name'; });
 
   ipcMain.handle('notes:pickFile', async (_e, create) => {
     const filters = [{ name: 'Markdown', extensions: ['md', 'markdown', 'txt'] }];

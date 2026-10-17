@@ -69,6 +69,8 @@ function register(ipcMain, getWin) {
   });
 
   ipcMain.handle('files:reveal', (_e, target) => shell.showItemInFolder(target));
+  // Open with the default application; resolves to '' on success or an error message.
+  ipcMain.handle('files:open', (_e, target) => (fs.existsSync(target) ? shell.openPath(target) : 'The file no longer exists.'));
 
   ipcMain.handle('files:search', async (_e, root, query) => {
     const q = String(query || '').toLowerCase();
