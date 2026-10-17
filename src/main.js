@@ -180,6 +180,7 @@ data.register(ipcMain, getWin);
 require('./services/maestri').register(ipcMain);
 require('./services/usage').register(ipcMain);
 require('./services/routines').register(ipcMain, getWin);
+require('./services/notes').register(ipcMain, getWin);
 shells.register(ipcMain, require('electron').shell);
 require('./services/tmux').register(ipcMain);
 ipcMain.handle('app:attentionCount', (_e, n) => tray.setAttention(n));

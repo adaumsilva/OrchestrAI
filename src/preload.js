@@ -1,7 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-const CALL_PREFIXES = ['bridge:', 'data:', 'maestri:', 'usage:', 'git:', 'files:', 'chat:', 'device:', 'app:', 'workspace:', 'pty:', 'routines:'];
-const EVENTS = ['bridge:request', 'pty:data', 'pty:exit', 'chat:data', 'chat:done', 'files:changed', 'routines:fire', 'routines:changed'];
+const CALL_PREFIXES = ['bridge:', 'data:', 'maestri:', 'usage:', 'git:', 'files:', 'chat:', 'device:', 'app:', 'workspace:', 'pty:', 'routines:', 'notes:'];
+const EVENTS = ['bridge:request', 'pty:data', 'pty:exit', 'chat:data', 'chat:done', 'files:changed', 'routines:fire', 'routines:changed', 'notes:changed'];
 
 contextBridge.exposeInMainWorld('orchestrai', {
   call: (channel, ...args) => {
