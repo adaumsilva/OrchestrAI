@@ -27,9 +27,13 @@
 - **Agent awareness**: activity monitoring, notifications, task manager with CPU/memory, and token/limit tracking per provider.
 - **Sessions that survive**: optional `tmux` persistence, scrollback restore, automatic backups.
 - **Runs anywhere you work**: local shells, WSL, SSH and Docker containers; themes and fonts per terminal.
+- **Accounts**: run the same agent CLI on different subscriptions or API keys side by side; keys are encrypted with the OS keychain.
+- **Docker Sandboxes**, an Android **device** node with a live H.264 stream and emulator control, and a **portal** with per-site storage scope, user agents and a design mode that sends element screenshots to an agent.
+- **Remote control** from a phone or tablet over Tailscale or a tunnel: watch terminals, answer prompts, get attention alerts ([threat model](docs/REMOTE.md)). Off by default.
+- **Yours to adjust**: rebindable keyboard shortcuts, Portuguese (Brazil) and English, light/dark themes, crash recovery that keeps terminals alive, storage management and in-app updates.
 
 ## Quick start
-Requires [Node.js](https://nodejs.org/) 18+ and git. Windows is the primary platform; macOS and Linux are untested (help welcome).
+Requires [Node.js](https://nodejs.org/) 18+ and git. Windows is the primary platform. CI packages and smoke-tests macOS and Linux builds too (see [docs/PACKAGING.md](docs/PACKAGING.md)); reports from those platforms are welcome.
 
     git clone https://github.com/adaumsilva/OrchestrAI.git
     cd OrchestrAI

@@ -21,8 +21,10 @@ module.exports = async (t) => {
   // ---- routing switch re-renders every rope ----
   await t.js(`(() => {
     const f = activeFloor();
-    const mk = (title, x, y) => addNode('note', { title, x, y, w: 200, h: 120 }, f).id;
-    const a = mk('A', 80, 80), b = mk('B', 520, 300), c = mk('C', 80, 420);
+    // the CI window is small (about 1000x680) and the first terminal would sit on top of the ropes: keep everything compact and clear of it
+    for (const n of f.nodes) { n.x = 3000; n.y = 3000; place(n, rt.get(f.id).live.get(n.id).el); }
+    const mk = (title, x, y) => addNode('note', { title, x, y, w: 160, h: 100 }, f).id;
+    const a = mk('A', 40, 40), b = mk('B', 380, 260), c = mk('C', 40, 330);
     f.ropes.push({ id: 'r1', a, b }, { id: 'r2', a, b: c });
     window.__ids = { a, b, c };
     wakeRopes(); return 0;
