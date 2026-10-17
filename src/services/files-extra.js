@@ -109,7 +109,11 @@ function freeName(dir, name) {
 
 function register(ipcMain) {
   ipcMain.handle('files:allowRoot', (_e, root) => {
-    if (root && path.isAbsolute(root)) roots.add(path.resolve(root));
+    if (root && path.isAbsolute(root)) {
+      roots.add(path.resolve(root));
+      // Served files are checked after symlinks and 8.3 short names are resolved, so the resolved root must be known too.
+      try { roots.add(fs.realpathSync(root)); } catch {}
+    }
     return true;
   });
 
