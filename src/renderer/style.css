@@ -449,3 +449,9 @@ webview { flex: 1; min-height: 0; background: #fff; border-radius: 6px; }
 /* Agent skills */
 .skill-row { display: flex; align-items: center; gap: 8px; padding: 8px; border: 1px solid var(--border); border-radius: 8px; }
 .skill-ok { color: var(--success); } .skill-old { color: var(--warning); }
+
+/* Config files sheet */
+.cfg-card { display: flex; align-items: center; gap: 8px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; }
+.cfg-sync { display: flex; align-items: center; gap: 8px; color: var(--fg-muted); }
+.cfg-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--fg-subtle); }
+.cfg-sync.inSync .cfg-dot { background: var(--success); } .cfg-sync.different .cfg-dot { background: var(--warning); }

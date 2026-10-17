@@ -125,6 +125,7 @@ function floorMenu(f) {
   const buttons = [
     h('button', { onclick: () => { closeModal(); renameFloor(f); } }, 'Rename'),
     h('button', { onclick: () => { closeModal(); hooksDialog(f); } }, 'Hooks…'),
+    h('button', { onclick: () => { closeModal(); configDialog(f); } }, 'Config files…'),
     f.repo ? h('button', { class: 'primary', onclick: () => { closeModal(); landDialog(f); } }, 'Land (merge into ' + 'base branch)') : null,
     h('button', { onclick: () => { closeModal(); deleteFloor(f); } }, f.repo ? 'Discard floor and branch' : 'Delete floor'),
   ];
