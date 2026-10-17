@@ -193,6 +193,7 @@ require('./services/ide').register(ipcMain);
 require('./services/templates').register(ipcMain, getWin);
 shells.register(ipcMain, require('electron').shell);
 require('./services/tmux').register(ipcMain);
+require('./services/portal').register(ipcMain);
 ipcMain.handle('app:attentionCount', (_e, n) => tray.setAttention(n));
 ipcMain.on('pty:killAll', () => { for (const p of ptys.values()) p.kill(); ptys.clear(); });
 

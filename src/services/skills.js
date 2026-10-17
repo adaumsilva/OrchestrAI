@@ -21,6 +21,10 @@ Terminals joined to yours by a rope are your peers. You can only reach those.
 - \`orchestrai ask <peer> <text...> [--timeout S]\` - send text to a peer, wait until it goes quiet, print what it answered
 - \`orchestrai check <peer> [--lines N]\` - see a peer's status and latest output without sending anything
 
+## Report progress and use browser portals
+- \`orchestrai floor-status <text...> [--state working|waiting|blocked|done]\` - show what you are doing on the floor tab (no text clears it)
+- A portal joined to you by a rope is a browser you can drive: \`orchestrai portal list|nav|text|click|type|shot\` (use \`-\` as the portal when only one is connected)
+
 ## If you are a Maestro (conductor) terminal
 - \`orchestrai list\` - every terminal on the canvas
 - \`orchestrai new --name N --command C [--role R] [--cwd DIR]\` - start a new agent terminal connected to you

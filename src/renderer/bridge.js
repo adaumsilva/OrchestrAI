@@ -25,7 +25,32 @@ function findTerminal(ref) {
 const roleSummary = (r) => r.instructions.replace(/\s+/g, ' ').slice(0, 80);
 
 // ---------- peer messaging (rope = permission) ----------
-const PEER_METHODS = ['peers', 'ask', 'check', 'floor-status'];
+const PEER_METHODS = ['peers', 'ask', 'check', 'floor-status', 'portal-list', 'portal-nav', 'portal-text', 'portal-click', 'portal-type', 'portal-shot'];
+
+// Portals a terminal may drive: those joined to it by a rope (a Maestro may drive any).
+function portalsFor(caller, scope) {
+  const linked = (floor, id) => floor.ropes.filter((r) => r.a === id || r.b === id).map((r) => (r.a === id ? r.b : r.a));
+  const out = [];
+  for (const floor of allFloors()) {
+    const ids = scope === 'maestro' ? null : (floor.id === caller.floor.id ? linked(floor, caller.node.id) : []);
+    for (const node of floor.nodes) {
+      if (node.kind !== 'portal' || (ids && !ids.includes(node.id))) continue;
+      const entry = rt.get(floor.id)?.live.get(node.id);
+      if (entry?.api.portal) out.push({ floor, node, api: entry.api.portal });
+    }
+  }
+  return out;
+}
+
+function resolvePortal(caller, scope, ref) {
+  const all = portalsFor(caller, scope);
+  const q = String(ref || '').trim().toLowerCase();
+  if (!q && all.length === 1) return all[0];
+  const hits = all.filter((p) => p.node.id === ref || p.node.title.toLowerCase() === q);
+  if (hits.length === 1) return hits[0];
+  if (hits.length > 1) throw new Error('"' + ref + '" matches ' + hits.length + ' portals; use an id: ' + hits.map((p) => p.node.id).join(', '));
+  throw new Error(all.length ? 'No portal "' + ref + '" connected to this terminal. Run "orchestrai portal list".' : 'No portal is connected to this terminal. Connect one with a rope first.');
+}
 
 // Terminals joined to this one by a rope (ropes stay within a floor).
 function peersOf(caller) {
@@ -74,6 +99,7 @@ async function askPeer(caller, target, text, { timeoutMs = 120000, quietMs = 300
 }
 
 async function bridgeHandle(method, p, from, scope) {
+  const p_ = p || {};
   const caller = allTerminals().find((t) => t.node.id === from);
   if (!caller) throw new Error('Unknown calling terminal.');
   if (PEER_METHODS.includes(method)) {
@@ -82,6 +108,30 @@ async function bridgeHandle(method, p, from, scope) {
         return (scope === 'maestro' ? allTerminals().filter((t) => t !== caller) : peersOf(caller)).map((t) => ({
           id: t.node.id, name: t.node.title, status: t.entry?.api.status?.() || 'unknown', role: roleById(t.node.data.roleId)?.name || '',
         }));
+      case 'portal-list':
+        return portalsFor(caller, scope).map((p) => ({ id: p.node.id, name: p.node.title, url: p.api.url(), title: p.api.title() }));
+      case 'portal-nav': {
+        const p = resolvePortal(caller, scope, p_.target);
+        p.api.navigate(String(p_.url || ''));
+        return { url: p.api.url() };
+      }
+      case 'portal-text':
+        return resolvePortal(caller, scope, p_.target).api.text(Number(p_.max) || 20000);
+      case 'portal-click': {
+        const ok = await resolvePortal(caller, scope, p_.target).api.click(String(p_.selector || ''));
+        if (!ok) throw new Error('No element matches "' + p_.selector + '".');
+        return { ok: true };
+      }
+      case 'portal-type': {
+        const ok = await resolvePortal(caller, scope, p_.target).api.type(String(p_.selector || ''), String(p_.text ?? ''));
+        if (!ok) throw new Error('No element matches "' + p_.selector + '".');
+        return { ok: true };
+      }
+      case 'portal-shot': {
+        const r = await resolvePortal(caller, scope, p_.target).api.shot();
+        if (r.error) throw new Error(r.error);
+        return { path: r.path, width: r.width, height: r.height };
+      }
       case 'floor-status':
         setFloorStatus(caller.floor, p.text, p.state);
         return { floor: caller.floor.name, status: caller.floor.status };

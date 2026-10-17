@@ -536,3 +536,8 @@ body.sb-open #viewport { left: 190px; }
 .icon-cell .git-badge { position: absolute; top: 2px; right: 4px; }
 .grid-crumbs { margin-bottom: 4px; }
 .grep-hit { flex-direction: column; gap: 0; } .grep-text { font-size: 11px; }
+
+.portal-holder { flex: 1; min-height: 0; display: flex; }
+.portal-view { flex: 1; min-height: 0; width: 100%; }
+.portal-banner { padding: 4px 8px; border-radius: 6px; background: var(--accent-soft); color: var(--accent); font-size: 12px; }
+.node-head button.active { background: var(--accent-soft); color: var(--accent); }
