@@ -24,6 +24,9 @@ Terminals joined to this one by a rope (any terminal, Maestro or not):
   orchestrai ask <peer> <text...> [--timeout S] Send text to a peer, wait until it goes quiet, print its reply
   orchestrai check <peer> [--lines N]           Show a peer's status and latest output without sending anything
 
+Any terminal can report progress on its floor (shown on the floor tab):
+  orchestrai floor-status <text...> [--state working|waiting|blocked|done]   (no text clears it)
+
 <terminal> is an id or a unique terminal name.
 Add --json to list/roles for machine-readable output.`;
 
@@ -136,6 +139,11 @@ function table(rows, cols) {
       case 'ask': {
         if (rest.length < 2) throw new Error('Usage: orchestrai ask <peer> <text...> [--timeout S]');
         console.log(await rpc('ask', { target: rest[0], text: rest.slice(1).join(' '), timeout: flags.timeout ? Number(flags.timeout) : undefined, quiet: flags.quiet ? Number(flags.quiet) : undefined }));
+        break;
+      }
+      case 'floor-status': {
+        const r = await rpc('floor-status', { text: rest.join(' '), state: flags.state });
+        console.log(r.status ? `${r.floor}: ${r.status.text} (${r.status.state})` : `${r.floor}: status cleared`);
         break;
       }
       case 'check': {

@@ -25,7 +25,7 @@ function findTerminal(ref) {
 const roleSummary = (r) => r.instructions.replace(/\s+/g, ' ').slice(0, 80);
 
 // ---------- peer messaging (rope = permission) ----------
-const PEER_METHODS = ['peers', 'ask', 'check'];
+const PEER_METHODS = ['peers', 'ask', 'check', 'floor-status'];
 
 // Terminals joined to this one by a rope (ropes stay within a floor).
 function peersOf(caller) {
@@ -82,6 +82,9 @@ async function bridgeHandle(method, p, from, scope) {
         return (scope === 'maestro' ? allTerminals().filter((t) => t !== caller) : peersOf(caller)).map((t) => ({
           id: t.node.id, name: t.node.title, status: t.entry?.api.status?.() || 'unknown', role: roleById(t.node.data.roleId)?.name || '',
         }));
+      case 'floor-status':
+        setFloorStatus(caller.floor, p.text, p.state);
+        return { floor: caller.floor.name, status: caller.floor.status };
       case 'check': {
         const t = resolvePeer(caller, scope, p.target);
         return { status: t.entry?.api.status?.() || 'unknown', screen: (t.entry?.api.readScreen?.() || '').split('\n').slice(-Math.max(1, Math.min(200, Number(p.lines) || 30))).join('\n') };

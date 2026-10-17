@@ -497,3 +497,10 @@ body.sb-open #viewport { left: 190px; }
 .link-img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; min-height: 0; }
 .link-target { color: var(--fg-muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .link-actions { flex: none; flex-wrap: wrap; }
+
+.floor-status { font-size: 10px; padding: 0 6px; border-radius: 8px; background: var(--hover); color: var(--fg-muted); cursor: pointer; margin-left: 4px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+.floor-status.working { background: #0a84ff33; color: var(--accent); } .floor-status.waiting { background: #ff9f0a33; color: var(--warning); }
+.floor-status.blocked { background: #ff453a33; color: var(--danger); } .floor-status.done { background: #30d15833; color: var(--success); }
+.spinner { width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.hook-run .st.err { color: var(--danger); }

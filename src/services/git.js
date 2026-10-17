@@ -163,6 +163,26 @@ const handlers = {
     return { ok: true };
   },
 
+  // Merge in a throwaway detached worktree so the base checkout is never touched.
+  async landDryRun({ repo, branch }) {
+    const os = require('os');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'orchestrai-dry-'));
+    const dir = path.join(tmp, 'wt');
+    try {
+      const add = await run(repo, ['worktree', 'add', '--detach', dir, 'HEAD']);
+      if (!add.ok) return { ok: false, err: add.err };
+      const m = await run(dir, ['-c', 'user.name=OrchestrAI', '-c', 'user.email=orchestrai@localhost', 'merge', '--no-commit', '--no-ff', branch]);
+      const lines = (r) => r.out.split(/\r?\n/).filter(Boolean);
+      const conflicts = lines(await run(dir, ['diff', '--name-only', '--diff-filter=U']));
+      const changed = lines(await run(dir, ['diff', '--cached', '--name-only']));
+      await run(dir, ['merge', '--abort']);
+      return { ok: true, clean: m.ok && !conflicts.length, conflicts, changed, message: m.ok ? '' : (m.out || m.err) };
+    } finally {
+      await run(repo, ['worktree', 'remove', '--force', dir]);
+      try { fs.rmSync(tmp, { recursive: true, force: true }); } catch {}
+    }
+  },
+
   async discardWorktree({ repo, dir, branch }) {
     await run(repo, ['worktree', 'remove', '--force', dir]);
     await run(repo, ['branch', '-D', branch]);

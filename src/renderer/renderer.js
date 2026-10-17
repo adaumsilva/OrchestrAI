@@ -94,6 +94,7 @@ function renderTabs() {
         f.repo ? h('span', { class: 'iso', title: `Isolated worktree (${f.branch})` }, '⑂') : null,
         h('span', {}, f.name),
         typeof prBadge === 'function' ? prBadge(f) : null,
+        typeof floorStatusBadge === 'function' ? floorStatusBadge(f) : null,
         h('span', { class: 'menu-dot', title: 'Floor options', onclick: (e) => { e.stopPropagation(); floorMenu(f); } }, '⋮'))),
     h('button', { id: 'add-floor', title: 'New floor', onclick: createFloorDialog }, '+'));
 }
@@ -128,7 +129,7 @@ async function createFloorDialog() {
           const f = newFloor({ name: name.value.trim() || 'Floor', dir: dir.value.trim(), hooks: { setup: setup.value.trim(), beforeLand: '' } });
           if (iso.checked) {
             const root = await call('app:worktreeRoot');
-            const r = await call('git:worktreeAdd', f.dir, { name: f.name, root });
+            const r = await withProgress('New floor', 'Creating a worktree…', () => call('git:worktreeAdd', f.dir, { name: f.name, root }));
             if (!r.ok) { alertModal('Could not create worktree', r.err); return; }
             f.repo = r.repo; f.branch = r.branch; f.dir = r.dir;
           }
@@ -147,10 +148,13 @@ async function createFloorDialog() {
 function floorMenu(f) {
   const buttons = [
     h('button', { onclick: () => { closeModal(); renameFloor(f); } }, 'Rename'),
+    h('button', { onclick: () => { closeModal(); floorStatusDialog(f); } }, 'Set status…'),
+    h('button', { onclick: () => { closeModal(); duplicateFloorDialog(f); } }, 'Duplicate'),
     h('button', { onclick: () => { closeModal(); hooksDialog(f); } }, 'Hooks…'),
     h('button', { onclick: () => { closeModal(); configDialog(f); } }, 'Config files…'),
     h('button', { onclick: () => { closeModal(); prDialog(f); } }, 'Pull request…'),
     f.dir ? h('button', { onclick: () => { closeModal(); openInIde(f.dir, { floor: f }); } }, 'Open in IDE') : null,
+    f.repo ? h('button', { onclick: () => { closeModal(); testLanding(f); } }, 'Test landing (dry run)') : null,
     f.repo ? h('button', { class: 'primary', onclick: () => { closeModal(); landDialog(f); } }, 'Land (merge into ' + 'base branch)') : null,
     h('button', { onclick: () => { closeModal(); deleteFloor(f); } }, f.repo ? 'Discard floor and branch' : 'Delete floor'),
   ];
@@ -176,8 +180,8 @@ function hooksDialog(f) {
     title: `Hooks for ${f.name}`,
     content: h('div', { style: 'display:flex;flex-direction:column;gap:10px' },
       h('label', {}, 'Setup command', h('div', { class: 'row' }, setup, h('button', { title: 'Run it now in a new terminal', onclick: () => { f.hooks.setup = setup.value.trim(); if (f.hooks.setup) { closeModal(); if (f.id !== state.active) switchFloor(f.id); runSetup(f); } } }, 'Run now'))),
-      h('label', {}, 'Check before landing (non-zero exit blocks landing until you confirm)', before),
-      h('div', { class: 'muted' }, 'Both run in the floor’s directory.')),
+      h('label', {}, 'Check before landing (non-zero exit blocks landing until you confirm)', h('div', { class: 'row' }, before, h('button', { onclick: async (e) => { f.hooks.beforeLand = before.value.trim(); if (!f.hooks.beforeLand) return; e.target.disabled = true; const res = await runHookRecorded(f, 'check', f.hooks.beforeLand); closeModal(); alertModal(res.code === 0 ? 'Check passed' : `Check failed (exit ${res.code})`, res.output.trim() || '(no output)'); } }, 'Run now'))),
+      h('div', { class: 'muted' }, 'Both run in the floor’s directory.'), hookHistoryEl(f)),
     actions: [{ label: 'Cancel', onClick: (c) => c() }, { label: 'Save', primary: true, onClick: (c) => { f.hooks.setup = setup.value.trim(); f.hooks.beforeLand = before.value.trim(); save(); c(); } }],
   });
 }
@@ -194,7 +198,10 @@ async function deleteFloor(f) {
   const msg = f.repo ? `Discard "${f.name}"? Its worktree and branch ${f.branch} are deleted, including unmerged work.` : `Delete "${f.name}" and close its nodes?`;
   if (!(await confirmModal('Delete floor', msg, 'Delete'))) return;
   await removeFloor(f);
-  if (f.repo) await call('git:discardWorktree', { repo: f.repo, dir: f.dir, branch: f.branch });
+  if (f.repo) {
+    const r = await withProgress('Discard floor', 'Removing the worktree and branch…', () => call('git:discardWorktree', { repo: f.repo, dir: f.dir, branch: f.branch }));
+    if (r && r.ok === false) alertModal('Could not remove the worktree', r.err || 'Unknown error');
+  }
 }
 
 async function removeFloor(f) {
@@ -234,7 +241,7 @@ async function landDialog(f) {
   const runCheck = async () => {
     checkOut.style.display = '';
     checkOut.textContent = 'Running…';
-    const res = await call('app:runHook', { cwd: f.dir, command: hook });
+    const res = await runHookRecorded(f, 'before landing', hook);
     checkState = res.code === 0 ? 'passed' : 'failed';
     checkOut.textContent = (res.timedOut ? '[timed out]\n' : '') + (res.output.trim() || '(no output)') + `\n\nexit code ${res.code}`;
     checkOut.classList.toggle('err', res.code !== 0);
@@ -251,6 +258,7 @@ async function landDialog(f) {
       h('div', { class: 'muted' }, 'Click a file to review its diff:'), fileList, diffEl,
       warn.map((w) => h('div', { class: 'err' }, w)),
       checkLine, checkOut,
+      h('button', { onclick: async () => { closeModal(); await testLanding(f); landDialog(f); } }, 'Test landing (dry run)'),
       h('label', { class: 'check' }, commit, 'Commit uncommitted changes first'),
       h('label', {}, 'Merge message', msg)),
     actions: [
