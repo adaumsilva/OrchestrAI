@@ -124,16 +124,19 @@ async function workspaceDialog2(w) {
   const { detected, custom, fallback } = await loadProfiles();
   const shell = h('select', {}, h('option', { value: '' }, `Global default (${fallback.label})`), ...[...custom, ...detected].map((p) => h('option', { value: p.id }, `${p.group}: ${p.label}`)));
   shell.value = w?.profileId || '';
+  const ides = await ideList();
+  const ide = h('select', {}, h('option', { value: '' }, ides.length ? `Automatic (${ides[0].label})` : 'None found'), ...ides.map((i) => h('option', { value: i.id }, i.label)));
+  ide.value = w?.ide || '';
   modal({
     title: w ? 'Workspace settings' : 'New workspace',
-    content: h('div', { style: 'display:flex;flex-direction:column;gap:10px' }, h('label', {}, 'Name', name), h('label', {}, 'Folder', h('div', { class: 'row' }, dir, browse)), h('label', {}, 'Default shell', shell)),
+    content: h('div', { style: 'display:flex;flex-direction:column;gap:10px' }, h('label', {}, 'Name', name), h('label', {}, 'Folder', h('div', { class: 'row' }, dir, browse)), h('label', {}, 'Default shell', shell), h('label', {}, 'Editor for “Open in IDE”', ide)),
     actions: [
       { label: 'Cancel', onClick: (c) => c() },
       {
         label: w ? 'Save' : 'Create', primary: true, onClick: (c) => {
           c();
-          if (w) { w.name = name.value.trim() || w.name; w.dir = dir.value.trim(); w.profileId = shell.value; save(); renderSidebar(); }
-          else addWorkspace({ name: name.value.trim() || undefined, dir: dir.value.trim(), profileId: shell.value });
+          if (w) { w.name = name.value.trim() || w.name; w.dir = dir.value.trim(); w.profileId = shell.value; w.ide = ide.value; save(); renderSidebar(); }
+          else addWorkspace({ name: name.value.trim() || undefined, dir: dir.value.trim(), profileId: shell.value }).ide = ide.value;
         },
       },
     ],

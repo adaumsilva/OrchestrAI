@@ -1,7 +1,7 @@
 // File tree with git status badges and a small text editor.
 NodeKinds.files = {
   label: 'Files', w: 620, h: 420,
-  mount({ node, body, cwd, floor, save }) {
+  mount({ node, body, cwd, floor, save, addButton }) {
     const root = () => node.data.root || cwd() || '';
     const expanded = new Set(node.data.expanded || []);
     const badges = new Map(); // relative path (forward slashes) -> status letter
@@ -94,6 +94,8 @@ NodeKinds.files = {
     area.addEventListener('input', () => { dirty = true; saveBtn.disabled = false; });
     area.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); if (dirty) saveFile(); } });
 
+    addButton('⌨', 'Open this folder in your IDE', () => openInIde(root(), { floor }));
+
     function createDialog(isDir) {
       const input = h('input', { placeholder: isDir ? 'folder name' : 'file name' });
       const base = selected && !selected.includes('.') ? selected : root();
@@ -116,6 +118,7 @@ NodeKinds.files = {
         title: name,
         content: h('div', { style: 'display:flex;flex-direction:column;gap:8px' },
           h('button', { onclick: () => { closeModal(); call('files:reveal', full); } }, 'Reveal in Explorer'),
+          h('button', { onclick: () => { closeModal(); openInIde(full, { floor }); } }, 'Open in IDE'),
           h('button', { onclick: () => { closeModal(); navigator.clipboard.writeText(full); } }, 'Copy path'),
           h('button', {
             onclick: () => {

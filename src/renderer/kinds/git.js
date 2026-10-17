@@ -1,7 +1,7 @@
 // Source control panel for the floor's directory.
 NodeKinds.git = {
   label: 'Git', w: 560, h: 460,
-  mount({ node, body, cwd }) {
+  mount({ node, body, cwd, floor, addButton }) {
     const dir = () => cwd();
     let st = null, sel = null, tab = 'changes';
 
@@ -19,6 +19,8 @@ NodeKinds.git = {
         h('button', { title: 'Refresh', onclick: refresh }, '⟳'), info),
       tabs, list, diffEl,
       h('div', { class: 'row' }, msg, commitBtn));
+
+    addButton('⌨', 'Open the repository folder in your IDE', () => openInIde(dir(), { floor }));
 
     const run = async (p) => {
       const r = await p;
