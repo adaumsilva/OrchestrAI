@@ -56,5 +56,7 @@ app.whenReady().then(async () => {
     if (t.results.some((r) => !r.ok)) code = 1;
   } catch (e) { console.log('ERROR', e && e.stack || e); code = 1; }
   try { await t.js('window.orchestrai.ptyKillAll()'); } catch {}
+  // The checks are done; record the verdict before shutting down, because tearing down node-pty can crash the process on exit.
+  if (process.env.ORCH_RESULT) { try { fs.writeFileSync(process.env.ORCH_RESULT, JSON.stringify({ done: true, checks: t.results.length, failed: t.results.filter((r) => !r.ok).length, code })); } catch {} }
   setTimeout(() => process.exit(code), 200);
 });
