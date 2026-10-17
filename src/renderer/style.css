@@ -510,3 +510,29 @@ body.sb-open #viewport { left: 190px; }
 .commit-row.sel { background: var(--accent-soft); }
 .commit-subject { font-weight: 600; margin-bottom: 4px; }
 .commit-body { white-space: pre-wrap; margin-bottom: 6px; color: var(--fg-muted); }
+
+.ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tabbar { display: flex; gap: 2px; overflow-x: auto; flex: none; }
+.tabbar .tab { display: flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 6px 6px 0 0; cursor: pointer; color: var(--fg-muted); max-width: 150px; font-size: 12px; }
+.tabbar .tab:hover { background: var(--hover); }
+.tabbar .tab.active { background: var(--elevated); color: var(--fg); }
+.tabbar .dirty-dot { color: var(--warning); font-size: 9px; }
+.tabbar .tab-x { opacity: .5; } .tabbar .tab-x:hover { opacity: 1; }
+.code-box { position: relative; flex: 1; min-height: 0; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.code-box textarea, .code-box .hl-layer { position: absolute; inset: 0; margin: 0; padding: 6px 8px; border: 0; font: 12px/16px var(--mono); white-space: pre; tab-size: 2; letter-spacing: 0; box-sizing: border-box; }
+.code-box .hl-layer { overflow: hidden; pointer-events: none; color: var(--fg); }
+.code-box .hl-layer code { font: inherit; background: none; padding: 0; }
+.code-box textarea { background: transparent; color: transparent; caret-color: var(--fg); resize: none; overflow: auto; z-index: 1; }
+.code-box textarea::selection { background: var(--accent-soft); color: transparent; }
+.media-box { flex: 1; min-height: 0; overflow: auto; display: flex; align-items: center; justify-content: center; background: #0002; border-radius: 6px; }
+.media-img, .media-video { max-width: 100%; max-height: 100%; }
+.media-pdf { width: 100%; height: 100%; border: 0; }
+.md-pane { flex: 1; min-height: 0; overflow: auto; padding: 6px 10px; }
+.icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 6px; padding: 4px 0; }
+.icon-cell { position: relative; display: flex; flex-direction: column; align-items: center; padding: 6px 2px; border-radius: 8px; cursor: pointer; text-align: center; }
+.icon-cell:hover { background: var(--hover); } .icon-cell.sel { background: var(--accent-soft); }
+.icon-glyph { font-size: 28px; line-height: 1.2; }
+.icon-name { font-size: 11px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.icon-cell .git-badge { position: absolute; top: 2px; right: 4px; }
+.grid-crumbs { margin-bottom: 4px; }
+.grep-hit { flex-direction: column; gap: 0; } .grep-text { font-size: 11px; }

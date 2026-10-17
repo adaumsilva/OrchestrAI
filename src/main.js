@@ -12,6 +12,8 @@ const shells = require('./services/shells');
 const bridge = require('./services/bridge');
 const tray = require('./services/tray');
 const procstats = require('./services/procstats');
+const filesExtra = require('./services/files-extra');
+filesExtra.registerSchemes(); // must run before the app is ready
 
 const ptys = new Map();
 let win;
@@ -176,6 +178,7 @@ ipcMain.handle('app:worktreeRoot', () => path.join(app.getPath('userData'), 'wor
 
 git.register(ipcMain);
 files.register(ipcMain, getWin);
+filesExtra.register(ipcMain);
 chat.register(ipcMain, getWin);
 device.register(ipcMain);
 data.register(ipcMain, getWin);
@@ -194,6 +197,7 @@ ipcMain.handle('app:attentionCount', (_e, n) => tray.setAttention(n));
 ipcMain.on('pty:killAll', () => { for (const p of ptys.values()) p.kill(); ptys.clear(); });
 
 app.whenReady().then(async () => {
+  filesExtra.handleProtocol();
   await bridge.start(getWin, ipcMain);
   createWindow();
   if (!process.env.ORCH_NO_TRAY) tray.setup(getWin);
