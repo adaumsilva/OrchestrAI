@@ -5,7 +5,7 @@ const file = process.env.FAKE_ADB_STATE;
 const st = JSON.parse(fs.readFileSync(file, 'utf8'));
 const save = () => fs.writeFileSync(file, JSON.stringify(st));
 const a = process.argv.slice(2);
-st.calls = (st.calls || []).concat([a.join(' ')]); save();
+fs.appendFileSync(file + '.calls', a.join(' ') + '\n'); // append-only: several of these run at the same time
 const fail = (m, code = 1) => { process.stderr.write(m + '\n'); process.exit(code); };
 
 if (process.env.ORCH_FAKE_EMULATOR) {

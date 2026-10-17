@@ -48,7 +48,12 @@ module.exports = async (t) => {
   await t.sleep(4500);
   const screenOf = async (id) => {
     await t.js(`rt.get(state.active).live.get('${id}').api.send(${JSON.stringify(show)}); 0`);
-    await t.sleep(1800);
+    // a slow machine can take several seconds to start PowerShell: wait for the output line itself
+    for (let i = 0; i < 100; i++) {
+      await t.sleep(250);
+      const s = await t.js(`rt.get(state.active).live.get('${id}').api.readScreen()`);
+      if (/^CFG=/m.test(s)) return s;
+    }
     return t.js(`rt.get(state.active).live.get('${id}').api.readScreen()`);
   };
   const sa = await screenOf(ids.A), sb = await screenOf(ids.B), sn = await screenOf(ids.N);

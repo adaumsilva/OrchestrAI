@@ -122,8 +122,40 @@ async function askPeer(caller, target, text, { timeoutMs = 120000, quietMs = 300
   }
 }
 
+// What a paired phone may do (see services/remote.js): list terminals, read a screen, type, press a key, clear the alert.
+const REMOTE_KEYS = { enter: '\r', esc: '\x1b', 'ctrl-c': '\x03', up: '\x1b[A', down: '\x1b[B', right: '\x1b[C', left: '\x1b[D', tab: '\t' };
+async function remoteHandle(method, p) {
+  const terms = allTerminals();
+  const byId = (id) => { const t = terms.find((x) => x.node.id === id); if (!t) throw new Error('No such terminal.'); return t; };
+  switch (method) {
+    case 'remote-terminals':
+      return terms.map((t) => ({ id: t.node.id, name: t.node.title, floor: t.floor.name, status: t.entry?.api.status?.() || 'starting', attention: !!t.entry?.el.classList.contains('attention'), role: roleById(t.node.data.roleId)?.name || '' }));
+    case 'remote-screen': {
+      const t = byId(p.id);
+      const lines = (t.entry?.api.readScreen?.() || '').split('\n');
+      while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+      return { text: lines.slice(-Math.max(1, Math.min(300, Number(p.lines) || 60))).join('\n'), status: t.entry?.api.status?.() || 'starting' };
+    }
+    case 'remote-input': {
+      const t = byId(p.id);
+      if (!t.entry) throw new Error('That terminal is not running.');
+      if (typeof p.key === 'string' && p.key) {
+        const data = REMOTE_KEYS[p.key] ?? (/^[a-zA-Z0-9]$/.test(p.key) ? p.key : null);
+        if (data === null) throw new Error('Unknown key.');
+        await call('pty:send', t.node.id, data);
+      } else if (typeof p.text === 'string' && p.text) {
+        if (p.enter === false) await call('pty:send', t.node.id, p.text); else await t.entry.api.send(p.text);
+      } else throw new Error('Nothing to send.');
+      return { ok: true };
+    }
+    case 'remote-ack': byId(p.id).entry?.api.clearAttention?.(); return { ok: true };
+    default: throw new Error('Unknown request.');
+  }
+}
+
 async function bridgeHandle(method, p, from, scope) {
   const p_ = p || {};
+  if (scope === 'remote') return remoteHandle(method, p_);
   const caller = allTerminals().find((t) => t.node.id === from);
   if (!caller) throw new Error('Unknown calling terminal.');
   if (PEER_METHODS.includes(method)) {

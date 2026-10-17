@@ -375,6 +375,8 @@ async function settingsDialog() {
       presetNote, presetRows,
       h('div', {}, h('button', { onclick: () => { presets.push({ id: `preset-${uid()}`, name: 'New preset', command: '', icon: '○', active: presets.filter((p) => p.active).length < MAX_ACTIVE_PRESETS }); renderPresets(); } }, '+ Add preset')),
       field('Language', h('select', { onchange: (e) => { state.settings.language = e.target.value; save(); setLanguage(languageFromSetting()); } }, availableLanguages().map(([c, n]) => h('option', { value: c, selected: (state.settings.language || '') === c }, n)))),
+      h('div', { class: 'muted', style: 'margin-top:8px' }, 'Remote control'),
+      h('div', {}, h('button', { onclick: () => { closeModal(); remoteDialog(); } }, 'Phone or tablet…')),
       h('div', { class: 'muted', style: 'margin-top:8px' }, 'Updates'),
       h('div', {}, h('button', { onclick: () => { closeModal(); updatesDialog(); } }, 'Check for updates…')),
       h('div', { class: 'muted', style: 'margin-top:8px' }, 'Keyboard'),

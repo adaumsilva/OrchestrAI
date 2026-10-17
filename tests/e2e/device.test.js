@@ -42,7 +42,9 @@ module.exports = async (t) => {
   process.env.ORCH_CLI_ADB = JSON.stringify(['node', path.join(__dirname, 'fake-adb.js')]);
   process.env.ORCH_CLI_EMULATOR = JSON.stringify(['node', path.join(__dirname, 'fake-adb.js')]);
   process.env.ORCH_FAKE_EMULATOR = '1'; // only the emulator process sees this (see below)
-  const callsOf = (re) => readState().calls.filter((c) => re.test(c));
+  // fake-adb appends every call to its own log file (many of them run at once, so the state file cannot hold the list)
+  const allCalls = () => (fs.existsSync(stateFile + '.calls') ? fs.readFileSync(stateFile + '.calls', 'utf8').split('\n').filter(Boolean) : []);
+  const callsOf = (re) => allCalls().filter((c) => re.test(c));
 
   // the adb stand-in must not behave like an emulator
   delete process.env.ORCH_FAKE_EMULATOR;
@@ -143,11 +145,11 @@ module.exports = async (t) => {
   await bridge('device-key', { key: 'home' });
   await bridge('device-launch', { pkg: 'com.example.app' });
   await t.sleep(300);
-  const log = readState().calls.join('\n');
+  const log = allCalls().join('\n');
   t.check('tap, swipe, type, key and launch reach the device', /-s emulator-5554 shell input tap 300 250/.test(log) && /input swipe 500 1800 500 600 300/.test(log) && /input text 'hello%sworld'/.test(log) && /input keyevent 3/.test(log) && /monkey -p com\.example\.app/.test(log), log.split('\n').slice(-8));
   t.check('a specific adb device can be chosen', (await bridge('device-tap', { x: 5, y: 6, serial: 'R58M123ABC' })).r?.ok && callsOf(/-s R58M123ABC shell input tap 5 6/).length === 1);
   const bad = await bridge('device-tap', { x: 'a', y: 1 });
-  t.check('bad coordinates are refused before reaching adb', /numbers/.test(bad.err || '') && !readState().calls.some((c) => /input tap NaN/.test(c)), bad);
+  t.check('bad coordinates are refused before reaching adb', /numbers/.test(bad.err || '') && !allCalls().some((c) => /input tap NaN/.test(c)), bad);
 
   // ---- no adb at all ----
   process.env.ORCH_CLI_ADB = JSON.stringify(['definitely-not-a-real-adb-binary']);

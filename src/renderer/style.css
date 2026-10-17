@@ -561,3 +561,7 @@ body.sb-open #viewport { left: 190px; }
 .tour-card h2 { margin: 0; font-size: 18px; } .tour-card p { margin: 0; color: var(--fg-muted); line-height: 1.5; }
 .tour-dots { display: flex; gap: 6px; } .tour-dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--border); } .tour-dots span.on { background: var(--accent); }
 .release-notes { max-height: 180px; white-space: pre-wrap; padding: 6px 8px; font-size: 12px; }
+
+.pair-box { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; padding: 10px 12px; border-radius: 10px; background: var(--accent-soft); }
+.pair-code { font-size: 28px; letter-spacing: 6px; font-weight: 700; }
+.dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }

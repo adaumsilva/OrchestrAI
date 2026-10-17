@@ -64,8 +64,21 @@ function envFor(terminalId, binDir, scope = 'peer') {
   };
 }
 
+// Ask the interface something on behalf of a main-process service (used by remote control). The scope cannot be chosen by
+// an HTTP caller: only code in this process can pass 'remote'.
+function ask(getWin, method, params, scope = 'remote', timeoutMs = 15000) {
+  return new Promise((resolve, reject) => {
+    const win = getWin();
+    if (!win || win.isDestroyed()) return reject(new Error('OrchestrAI window is not available'));
+    const id = nextId++;
+    const timer = setTimeout(() => { pending.delete(id); reject(new Error('Timed out waiting for the app')); }, timeoutMs);
+    pending.set(id, { resolve, reject, timer });
+    win.webContents.send('bridge:request', { id, method, params, from: 'remote', scope });
+  });
+}
+
 function stop() {
   try { server?.close(); } catch {}
 }
 
-module.exports = { start, envFor, stop };
+module.exports = { start, envFor, stop, ask };

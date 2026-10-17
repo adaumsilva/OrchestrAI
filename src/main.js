@@ -18,6 +18,7 @@ const storage = require('./services/storage');
 storage.applyPointer(app); // honour a moved data folder before anything reads userData
 let store = null;
 let lifecycle = null;
+let remote = null;
 filesExtra.registerSchemes(); // must run before the app is ready
 
 const ptys = new Map();
@@ -222,6 +223,8 @@ shells.register(ipcMain, require('electron').shell);
 require('./services/tmux').register(ipcMain);
 require('./services/portal').register(ipcMain);
 require('./services/updates').register(ipcMain, getWin);
+remote = require('./services/remote').createRemote({ app, getWin, ask: (method, params) => bridge.ask(getWin, method, params) });
+remote.register(ipcMain);
 lifecycle = require('./services/lifecycle').register(ipcMain, { app, dialog: require('electron').dialog, shell: require('electron').shell, getWin, ptys, storage, loadApp, loadRecovery });
 accounts.register(ipcMain);
 store = storage.register(ipcMain, { app, session: require('electron').session, shell: require('electron').shell, getWin });
@@ -233,12 +236,14 @@ app.whenReady().then(async () => {
   filesExtra.handleProtocol();
   await bridge.start(getWin, ipcMain);
   createWindow();
+  remote?.start();
   if (!process.env.ORCH_NO_TRAY) tray.setup(getWin);
 });
 app.on('window-all-closed', () => {
   for (const p of ptys.values()) p.kill();
   chat.killAll();
   device.killStreams();
+  remote?.stop();
   data.backupNow();
   bridge.stop();
   require('./services/routines').stop();
