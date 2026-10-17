@@ -4,7 +4,10 @@
   "description": "A spatial canvas terminal workspace for AI agents.",
   "main": "src/main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "test": "node tests/run-all.js",
+    "test:unit": "node tests/unit/schedule.test.js",
+    "test:e2e": "node tests/e2e/run.js"
   },
   "license": "MIT",
   "dependencies": {

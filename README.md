@@ -103,3 +103,7 @@ In **Settings** (⚙): pick a theme (Follow system, Dark, Light, Midnight, Solar
 The `⋯` button opens export / import, a backup list and the backups folder. A backup is written every 10 minutes when something changed, and on quit (last 20 kept). A tray icon offers Show / Hide / Quit.
 ## License
 [MIT](LICENSE) © 2026 Adam Silva
+
+## Tests
+
+`npm test` runs the unit tests (plain node) and then every `tests/e2e/*.test.js` in its own Electron process against a throwaway profile. `npm run test:e2e -- palette` runs the e2e files whose name contains `palette`. CI runs the same on Windows for every push and pull request.
