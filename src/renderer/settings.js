@@ -374,6 +374,7 @@ async function settingsDialog() {
       h('div', { class: 'muted', style: 'margin-top:8px' }, 'Quick start presets'),
       presetNote, presetRows,
       h('div', {}, h('button', { onclick: () => { presets.push({ id: `preset-${uid()}`, name: 'New preset', command: '', icon: '○', active: presets.filter((p) => p.active).length < MAX_ACTIVE_PRESETS }); renderPresets(); } }, '+ Add preset')),
+      field('Language', h('select', { onchange: (e) => { state.settings.language = e.target.value; save(); setLanguage(languageFromSetting()); } }, availableLanguages().map(([c, n]) => h('option', { value: c, selected: (state.settings.language || '') === c }, n)))),
       h('div', { class: 'muted', style: 'margin-top:8px' }, 'Keyboard'),
       h('div', {}, h('button', { onclick: () => { closeModal(); shortcutsDialog(); } }, 'Customize shortcuts…')),
       h('div', { class: 'muted', style: 'margin-top:8px' }, 'Accounts'),

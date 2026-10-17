@@ -527,4 +527,5 @@ function buildToolbar() {
   switchFloor(state.floors.find((f) => f.id === state.active)?.id || state.floors[0].id);
   const f = activeFloor();
   if (!f.nodes.length) addNode('terminal');
+  if (typeof startI18n === 'function') startI18n();
 })();

@@ -6,6 +6,7 @@ const fs = require('fs');
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'orchestrai-e2e-'));
 app.setPath('userData', dataDir);
+app.commandLine.appendSwitch('lang', 'en-US'); // the UI follows the system language; tests expect English
 process.env.ORCH_NO_TRAY = '1';
 require('../../src/main.js');
 
