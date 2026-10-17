@@ -411,6 +411,7 @@ function mountNode(f, node) {
     e.preventDefault();
     popupMenu(e.clientX, e.clientY, [
       ...(node.kind === 'terminal' ? [{ label: 'Terminal settings…', onClick: () => terminalDialog({ mode: 'edit', floor: f, node }) }, { label: 'Restart', onClick: () => entry.api.restart?.() }, { separator: true }] : []),
+      { label: 'Connections…', onClick: () => connectionsDialog({ nodeId: node.id }) },
       { label: 'Rename', onClick: () => title.dispatchEvent(new MouseEvent('dblclick')) },
       { label: 'Close', onClick: () => removeNode(f, node.id) },
     ]);

@@ -26,8 +26,78 @@ const edgeMidpoints = (n) => [
 const center = (n) => ({ x: n.x + n.w / 2, y: n.y + n.h / 2 });
 const closest = (points, to) => points.reduce((best, p) => (Math.hypot(p.x - to.x, p.y - to.y) < Math.hypot(best.x - to.x, best.y - to.y) ? p : best));
 
+const SIDE_DIRS = [{ x: 0, y: -1 }, { x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }]; // top, right, bottom, left
+const closestIndex = (points, to) => points.reduce((best, p, i) => (Math.hypot(p.x - to.x, p.y - to.y) < Math.hypot(points[best].x - to.x, points[best].y - to.y) ? i : best), 0);
+
 function pinsFor(a, b) {
-  return { start: closest(edgeMidpoints(a), center(b)), end: closest(edgeMidpoints(b), center(a)) };
+  const ma = edgeMidpoints(a), mb = edgeMidpoints(b);
+  const ia = closestIndex(ma, center(b)), ib = closestIndex(mb, center(a));
+  return { start: ma[ia], end: mb[ib], sa: SIDE_DIRS[ia], sb: SIDE_DIRS[ib] };
+}
+
+// ---------- circuit routing: right-angle runs with rounded corners ----------
+const ropeRouting = () => (state.settings?.ropeRouting === 'circuit' ? 'circuit' : 'cable');
+const CIRCUIT_GAP = 22, CIRCUIT_RADIUS = 10;
+
+// Leg between two points, leaving horizontally first or vertically first.
+const manhattan = (a, b, horizFirst) => (horizFirst ? [a, { x: b.x, y: a.y }, b] : [a, { x: a.x, y: b.y }, b]);
+
+// The corner points of a circuit route. sa/sb are the outward directions of the sides the rope leaves and enters by;
+// a tie (pin) is a point the route must pass through.
+function circuitPoints(start, sa, end, sb, pin) {
+  const p1 = { x: start.x + sa.x * CIRCUIT_GAP, y: start.y + sa.y * CIRCUIT_GAP };
+  const p3 = { x: end.x + sb.x * CIRCUIT_GAP, y: end.y + sb.y * CIRCUIT_GAP };
+  let mid;
+  if (pin) {
+    mid = [...manhattan(p1, pin, sa.x !== 0), ...manhattan(pin, p3, sb.x === 0).slice(1)];
+  } else if (sa.x !== 0 && sb.x !== 0) {
+    const mx = (p1.x + p3.x) / 2;
+    mid = [p1, { x: mx, y: p1.y }, { x: mx, y: p3.y }, p3];
+  } else if (sa.x === 0 && sb.x === 0) {
+    const my = (p1.y + p3.y) / 2;
+    mid = [p1, { x: p1.x, y: my }, { x: p3.x, y: my }, p3];
+  } else {
+    mid = manhattan(p1, p3, sa.x !== 0);
+  }
+  const pts = [start, ...mid, end];
+  // drop repeated points and points in the middle of a straight run
+  const out = [];
+  for (const p of pts) {
+    const last = out[out.length - 1];
+    if (last && Math.abs(last.x - p.x) < 0.5 && Math.abs(last.y - p.y) < 0.5) continue;
+    out.push(p);
+  }
+  return out.filter((p, i) => {
+    if (i === 0 || i === out.length - 1) return true;
+    const a = out[i - 1], b = out[i + 1];
+    return !((Math.abs(a.x - p.x) < 0.5 && Math.abs(p.x - b.x) < 0.5) || (Math.abs(a.y - p.y) < 0.5 && Math.abs(p.y - b.y) < 0.5));
+  });
+}
+
+function roundedPath(pts) {
+  if (pts.length < 2) return '';
+  let d = `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}`;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const a = pts[i - 1], p = pts[i], b = pts[i + 1];
+    const la = Math.hypot(p.x - a.x, p.y - a.y), lb = Math.hypot(b.x - p.x, b.y - p.y);
+    const r = Math.min(CIRCUIT_RADIUS, la / 2, lb / 2);
+    const ax = p.x + ((a.x - p.x) / la) * r, ay = p.y + ((a.y - p.y) / la) * r;
+    const bx = p.x + ((b.x - p.x) / lb) * r, by = p.y + ((b.y - p.y) / lb) * r;
+    d += ` L${ax.toFixed(1)},${ay.toFixed(1)} Q${p.x.toFixed(1)},${p.y.toFixed(1)} ${bx.toFixed(1)},${by.toFixed(1)}`;
+  }
+  const last = pts[pts.length - 1];
+  return d + ` L${last.x.toFixed(1)},${last.y.toFixed(1)}`;
+}
+
+// Point halfway along a polyline, where the remove chip sits.
+function polylineMid(pts) {
+  const lens = pts.slice(1).map((p, i) => Math.hypot(p.x - pts[i].x, p.y - pts[i].y));
+  let left = lens.reduce((s, l) => s + l, 0) / 2;
+  for (let i = 0; i < lens.length; i++) {
+    if (left <= lens[i] || i === lens.length - 1) { const t = lens[i] ? left / lens[i] : 0; return { x: pts[i].x + (pts[i + 1].x - pts[i].x) * t, y: pts[i].y + (pts[i + 1].y - pts[i].y) * t }; }
+    left -= lens[i];
+  }
+  return pts[0];
 }
 
 // Smooth path through points using midpoint quadratic segments.
@@ -52,8 +122,8 @@ function newSim(pa, pb) {
   return { pts, flashUntil: 0, dom: null, still: 0 };
 }
 
-function stepSim(sim, pa, pb) {
-  const pts = sim.pts, last = pts.length - 1;
+function stepSim(sim, pa, pb, pin) {
+  const pts = sim.pts, last = pts.length - 1, midI = Math.floor(pts.length / 2);
   const seg = Math.max(4, (Math.hypot(pb.x - pa.x, pb.y - pa.y) * 1.1 + 24) / last);
   let energy = 0;
   for (let i = 1; i < last; i++) {
@@ -65,17 +135,19 @@ function stepSim(sim, pa, pb) {
   }
   for (let iter = 0; iter < 10; iter++) {
     pts[0].x = pa.x; pts[0].y = pa.y; pts[last].x = pb.x; pts[last].y = pb.y;
+    if (pin) { pts[midI].x = pin.x; pts[midI].y = pin.y; }
     for (let i = 0; i < last; i++) {
       const a = pts[i], b = pts[i + 1];
       const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 0.0001;
       const diff = (d - seg) / d;
-      const wa = i === 0 ? 0 : 0.5, wb = i + 1 === last ? 0 : 0.5;
+      const wa = i === 0 || (pin && i === midI) ? 0 : 0.5, wb = i + 1 === last || (pin && i + 1 === midI) ? 0 : 0.5;
       const total = wa + wb || 1;
       a.x += dx * diff * (wa / total); a.y += dy * diff * (wa / total);
       b.x -= dx * diff * (wb / total); b.y -= dy * diff * (wb / total);
     }
   }
   pts[0].x = pa.x; pts[0].y = pa.y; pts[last].x = pb.x; pts[last].y = pb.y;
+  if (pin) { pts[midI].x = pin.x; pts[midI].y = pin.y; }
   return energy;
 }
 
@@ -89,19 +161,25 @@ function ensureDom(f, rope, sim) {
   chip.append(svg('circle', { r: 9 }), svg('path', { d: 'M-3.5,-3.5 L3.5,3.5 M3.5,-3.5 L-3.5,3.5', class: 'x' }));
   chip.addEventListener('mousedown', (e) => { e.stopPropagation(); });
   chip.addEventListener('click', (e) => { e.stopPropagation(); removeRope(f, rope.id); });
+  const pinEl = svg('circle', { class: 'rope-pin', r: 6, style: 'display:none' });
+  pinEl.addEventListener('mousedown', (e) => { e.stopPropagation(); startPinDrag(f, rope, e); });
+  pinEl.addEventListener('dblclick', (e) => { e.stopPropagation(); setRopePin(f, rope, null); });
+  hit.addEventListener('mousedown', (e) => { if (e.button === 0) startPinDrag(f, rope, e, true); });
   const g = svg('g', { class: 'rope-group' });
-  g.append(hit, line, chip);
+  g.append(hit, line, pinEl, chip);
   R.ropesEl.append(g);
-  sim.dom = { g, hit, line, chip };
+  sim.dom = { g, hit, line, chip, pinEl };
   return sim.dom;
 }
 
 function renderRope(f, rope, sim) {
   const dom = ensureDom(f, rope, sim);
-  const d = smoothPath(sim.pts);
+  const d = sim.circuit ? roundedPath(sim.circuit) : smoothPath(sim.pts);
   dom.hit.setAttribute('d', d);
   dom.line.setAttribute('d', d);
-  const mid = sim.pts[Math.floor(sim.pts.length / 2)];
+  const mid = sim.circuit ? polylineMid(sim.circuit) : sim.pts[Math.floor(sim.pts.length / 2)];
+  dom.pinEl.style.display = rope.pin ? '' : 'none';
+  if (rope.pin) { dom.pinEl.setAttribute('cx', rope.pin.x.toFixed(1)); dom.pinEl.setAttribute('cy', rope.pin.y.toFixed(1)); }
   dom.chip.setAttribute('transform', `translate(${mid.x.toFixed(1)},${mid.y.toFixed(1)})`);
   dom.line.classList.toggle('active', performance.now() < sim.flashUntil);
 }
@@ -111,19 +189,26 @@ function stepRopes() {
   const f = activeFloor();
   if (!f) return;
   let moving = false;
+  const routing = ropeRouting();
   for (const rope of f.ropes) {
     if (rope.rf) continue; // cross-floor ropes are drawn as stubs (crossfloor.js)
     const a = f.nodes.find((n) => n.id === rope.a), b = f.nodes.find((n) => n.id === rope.b);
     if (!a || !b) continue;
-    const { start, end } = pinsFor(a, b);
+    const { start, end, sa, sb } = pinsFor(a, b);
     let sim = sims.get(rope.id);
     if (!sim) {
       sim = newSim(start, end);
       sims.set(rope.id, sim);
-      if (!reducedMotion.matches) for (let i = 0; i < 40; i++) stepSim(sim, start, end);
+      if (!reducedMotion.matches && routing === 'cable') for (let i = 0; i < 40; i++) stepSim(sim, start, end, rope.pin);
     }
-    let energy = stepSim(sim, start, end);
-    if (reducedMotion.matches) { for (let i = 0; i < 30; i++) stepSim(sim, start, end); energy = 0; } // settle instantly, no swinging
+    let energy = 0;
+    if (routing === 'circuit') {
+      sim.circuit = circuitPoints(start, sa, end, sb, rope.pin);
+    } else {
+      sim.circuit = null;
+      energy = stepSim(sim, start, end, rope.pin);
+      if (reducedMotion.matches) { for (let i = 0; i < 30; i++) stepSim(sim, start, end, rope.pin); energy = 0; } // settle instantly, no swinging
+    }
     renderRope(f, rope, sim);
     if (energy > SLEEP_SPEED || performance.now() < sim.flashUntil + 50) moving = true;
   }
@@ -156,6 +241,26 @@ function removeRope(f, id) {
   if (typeof removeRopeEverywhere === 'function') removeRopeEverywhere(id);
   save();
   wakeRopes();
+}
+
+// ---------- ties: hold a rope at a point on the canvas ----------
+function setRopePin(f, rope, pin) {
+  if (pin) rope.pin = { x: Math.round(pin.x), y: Math.round(pin.y) }; else delete rope.pin;
+  save();
+  wakeRopes();
+}
+
+// Dragging a rope (or its tie) ties it where you let go; the tie is only created once the pointer has really moved.
+function startPinDrag(f, rope, e, fromLine) {
+  e.preventDefault();
+  const x0 = e.clientX, y0 = e.clientY;
+  let moved = !fromLine;
+  drag((m) => {
+    if (!moved && Math.hypot(m.clientX - x0, m.clientY - y0) < 5) return;
+    moved = true;
+    rope.pin = worldPoint(f, m);
+    wakeRopes();
+  });
 }
 
 // ---------- connect interaction ----------

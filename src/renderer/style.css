@@ -541,3 +541,7 @@ body.sb-open #viewport { left: 190px; }
 .portal-view { flex: 1; min-height: 0; width: 100%; }
 .portal-banner { padding: 4px 8px; border-radius: 6px; background: var(--accent-soft); color: var(--accent); font-size: 12px; }
 .node-head button.active { background: var(--accent-soft); color: var(--accent); }
+
+.rope-pin { fill: var(--card); stroke: var(--accent); stroke-width: 2; cursor: grab; pointer-events: all; }
+.rope-pin:hover { fill: var(--accent); }
+.conn-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 4px; border-bottom: 1px solid var(--border); }

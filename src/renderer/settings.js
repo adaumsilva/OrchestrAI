@@ -360,6 +360,7 @@ async function settingsDialog() {
       h('div', { class: 'muted' }, '“Follow system” switches between the light and dark theme above with your OS appearance.'),
       field('Scrollback (lines)', num('scrollback', 500, 100000, 500)),
       field('Default profile', profileSelect),
+      field('Connection style', h('select', { onchange: (e) => setRopeRouting(e.target.value) }, h('option', { value: 'cable', selected: ropeRouting() === 'cable' }, 'Hanging cables'), h('option', { value: 'circuit', selected: ropeRouting() === 'circuit' }, 'Circuit traces (right angles)'))),
       check('cursorBlink', 'Blinking cursor'),
       check('copyOnSelect', 'Copy text as soon as it is selected'),
       check('windowsKeys', 'Ctrl+C copies when text is selected, Ctrl+V pastes (Ctrl+Shift+C/V always work)'),
