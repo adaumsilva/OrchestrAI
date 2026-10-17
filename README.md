@@ -38,6 +38,10 @@ Requires [Node.js](https://nodejs.org/) 18+ and git. Windows is the primary plat
 
 If you launch from a VS Code or Claude Code shell, unset `ELECTRON_RUN_AS_NODE` first (`env -u ELECTRON_RUN_AS_NODE npm start` in Git Bash, `Remove-Item Env:ELECTRON_RUN_AS_NODE` in PowerShell).
 
+## Install
+
+Download an installer from the [releases page](https://github.com/adaumsilva/OrchestrAI/releases) (Windows, macOS, Linux), or build one yourself: see [docs/PACKAGING.md](docs/PACKAGING.md). Builds are not code-signed yet, so your OS will ask you to confirm the first launch.
+
 ## Screenshots
 ![Task manager showing Claude Code and Codex running, with CPU, memory, tokens and limits](docs/images/tasks.png)
 

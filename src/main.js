@@ -24,6 +24,9 @@ const ptys = new Map();
 let win;
 const getWin = () => win;
 
+// In a packaged build the files live in app.asar, which external programs cannot run from; bin/ is unpacked next to it.
+const binDir = path.join(__dirname, '..', 'bin').replace(/app\.asar([\\/])/, 'app.asar.unpacked$1');
+
 const stateFile = () => path.join(app.getPath('userData'), 'workspace.json');
 
 function defaultShell() {
@@ -48,6 +51,7 @@ function createWindow() {
   if (process.env.ORCH_DEBUG) win.webContents.on('console-message', (_e, level, message, line, src) => console.log(`[renderer:${level}] ${message} (${path.basename(src)}:${line})`));
   lifecycle?.guard(win);
   loadApp();
+  if (process.env.ORCH_SMOKE_OUT) win.webContents.once('did-finish-load', () => require('./smoke').run(win, process.env.ORCH_SMOKE_OUT));
 }
 
 const loadApp = () => win && !win.isDestroyed() && win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
@@ -109,7 +113,7 @@ ipcMain.handle('pty:spawn', (_e, { id, cwd, cols, rows, profile, env, maestro, p
       cols: cols || 80,
       rows: rows || 24,
       cwd: profile?.cdFlag ? undefined : dir,
-      env: { ...process.env, ...(env || {}), ...accounts.envFor(accountId), TERM_PROGRAM: 'OrchestrAI', ...(maestro || peer ? bridge.envFor(id, path.join(__dirname, '..', 'bin'), maestro ? 'maestro' : 'peer') : {}) },
+      env: { ...process.env, ...(env || {}), ...accounts.envFor(accountId), TERM_PROGRAM: 'OrchestrAI', ...(maestro || peer ? bridge.envFor(id, binDir, maestro ? 'maestro' : 'peer') : {}) },
     });
   } catch (err) {
     return { ok: false, error: `${requested}: ${String(err.message || err)}` };

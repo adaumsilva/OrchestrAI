@@ -6,8 +6,15 @@
   "scripts": {
     "start": "electron .",
     "test": "node tests/run-all.js",
-    "test:unit": "node tests/unit/schedule.test.js",
-    "test:e2e": "node tests/e2e/run.js"
+    "test:unit": "node tests/run-all.js --unit-only",
+    "test:e2e": "node tests/e2e/run.js",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux",
+    "icon": "electron scripts/make-icon.js",
+    "smoke": "node scripts/smoke-packaged.js"
   },
   "license": "MIT",
   "dependencies": {
@@ -17,8 +24,70 @@
     "@xterm/addon-unicode11": "^0.9.0",
     "@xterm/addon-web-links": "^0.12.0",
     "@xterm/xterm": "^6.0.0",
-    "electron": "^44.8.0",
     "electron-updater": "^6.8.9",
     "node-pty": "^1.1.0"
+  },
+  "devDependencies": {
+    "electron": "^44.9.0",
+    "electron-builder": "^26.15.3"
+  },
+  "author": "OrchestrAI contributors",
+  "homepage": "https://github.com/adaumsilva/OrchestrAI",
+  "build": {
+    "appId": "dev.orchestrai.app",
+    "productName": "OrchestrAI",
+    "copyright": "Copyright © OrchestrAI contributors",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "bin/**/*",
+      "package.json",
+      "!**/*.map"
+    ],
+    "asarUnpack": [
+      "bin/**/*",
+      "node_modules/node-pty/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.developer-tools",
+      "icon": "build/icon.png",
+      "hardenedRuntime": false
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Development",
+      "icon": "build/icon.png",
+      "maintainer": "OrchestrAI contributors"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "adaumsilva",
+        "repo": "OrchestrAI"
+      }
+    ],
+    "npmRebuild": false
   }
 }

@@ -10,3 +10,6 @@
 node_modules/
 CLAUDE.MDGIT ST
 .claude
+
+# Packaging output
+dist/

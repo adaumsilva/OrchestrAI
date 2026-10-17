@@ -10,6 +10,7 @@ for (const f of fs.readdirSync(unitDir).filter((x) => x.endsWith('.test.js'))) {
   console.log(`== unit/${f}`);
   if (spawnSync(process.execPath, [path.join(unitDir, f)], { stdio: 'inherit' }).status !== 0) failed++;
 }
+if (process.argv.includes('--unit-only')) process.exit(failed ? 1 : 0);
 const e2e = spawnSync(process.execPath, [path.join(__dirname, 'e2e', 'run.js'), ...process.argv.slice(2)], { stdio: 'inherit' });
 if (e2e.status !== 0) failed++;
 process.exit(failed ? 1 : 0);
