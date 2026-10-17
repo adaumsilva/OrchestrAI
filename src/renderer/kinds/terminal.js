@@ -208,7 +208,17 @@ NodeKinds.terminal = {
       if (exited) { if (d === '\r') restart(); return; }
       api.ptyWrite(node.id, d);
     });
-    const offData = api.on('pty:data', (id, d) => { if (id === node.id) { term.write(d); noteOutput(d.length); } });
+    // A sandbox terminal that hits a network policy says so in plain text; point at the suggested fix once.
+    let denialTail = '', denialShown = false;
+    const watchDenial = (d) => {
+      if (denialShown || node.data.runsOn?.kind !== 'sandbox') return;
+      denialTail = (denialTail + d).slice(-4000);
+      const hit = findSandboxDenial(denialTail.replace(/\x1b\[[0-9;?]*[ -/]*[@-~]/g, ''));
+      if (!hit) return;
+      denialShown = true;
+      term.write(`\r\n\x1b[33m[OrchestrAI] The sandbox policy denied something.${hit.fix ? ' Suggested fix: ' + hit.fix : ' Open the terminal settings and use Test connection for details.'}\x1b[0m\r\n`);
+    };
+    const offData = api.on('pty:data', (id, d) => { if (id === node.id) { term.write(d); noteOutput(d.length); watchDenial(d); } });
     const offExit = api.on('pty:exit', (id, code) => {
       if (id !== node.id) return;
       exited = true;

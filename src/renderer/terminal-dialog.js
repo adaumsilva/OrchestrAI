@@ -71,9 +71,35 @@ async function terminalDialog({ mode, floor, node }) {
             ? h('select', { onchange: (e) => { r.container = e.target.value; } }, h('option', { value: '' }, 'Choose a running container'), containers.map((n) => h('option', { value: n, selected: r.container === n }, n)))
             : input('container', 'Container name or ID'), containers.length ? null : 'No running containers were found; type a name.'),
           sheetField('User', input('user', 'Image default')));
+      case 'sandbox':
+        return sandboxFields();
       default:
         return null;
     }
+  }
+
+  // Docker Sandbox: pick one of `docker sandbox ls`, create one, or test the connection.
+  let sandboxInfo = null; // { ok, sandboxes, error } once loaded
+  function loadSandboxes() {
+    sandboxInfo = { loading: true };
+    call('sandbox:list').then((res) => { sandboxInfo = res; if (draft.runsOn.kind === 'sandbox') render(); });
+  }
+  function sandboxFields() {
+    const r = draft.runsOn;
+    if (!sandboxInfo) loadSandboxes();
+    const list = sandboxInfo?.sandboxes ? sortSandboxes(sandboxInfo.sandboxes, floor.dir) : [];
+    const pick = sandboxInfo?.loading || !sandboxInfo ? h('div', { class: 'sheet-hint' }, 'Looking for sandboxes…')
+      : sandboxInfo.ok === false ? h('div', { class: 'sheet-hint err' }, `Could not list sandboxes: ${sandboxInfo.error}`)
+        : list.length ? h('select', { onchange: (e) => { r.sandbox = e.target.value; } },
+          h('option', { value: '' }, 'Choose a sandbox'),
+          list.map((s) => h('option', { value: s.name, selected: r.sandbox === s.name }, `${s.name}${s.agent ? ' · ' + s.agent : ''}${s.status ? ' · ' + s.status : ''}${s.workspace ? ' · ' + s.workspace : ''}`)))
+          : h('div', { class: 'sheet-hint' }, 'No sandboxes exist yet. Create one for this project.');
+    return h('div', { class: 'sheet-sub' },
+      sheetField('Sandbox', pick, 'Several terminals can share one sandbox. OrchestrAI never deletes it.'),
+      h('div', { class: 'row' },
+        h('button', { class: 'sheet-btn', onclick: () => { sandboxInfo = null; render(); } }, 'Refresh'),
+        h('button', { class: 'sheet-btn', onclick: async () => { const name = await createSandboxDialog(floor.dir); sandboxInfo = null; if (name) r.sandbox = name; render(); } }, 'Create new…'),
+        h('button', { class: 'sheet-btn', onclick: () => testSandbox(r.sandbox || '') }, 'Test connection')));
   }
 
   // Which account the agent CLI runs on: the provider's default, one of its accounts, or the plain environment.
@@ -101,8 +127,8 @@ async function terminalDialog({ mode, floor, node }) {
     const nameInput = h('input', { placeholder: 'Terminal name', value: draft.name, oninput: (e) => { draft.name = e.target.value; } });
     const commandInput = h('input', { class: 'mono-input', placeholder: 'e.g. claude, codex, or leave empty for shell', value: draft.command, oninput: (e) => { draft.command = e.target.value; } });
     const runs = h('select', { onchange: (e) => { draft.runsOn = { kind: e.target.value }; render(); } },
-      [['default', 'Workspace Default'], ['local', 'Local'], ['wsl', 'WSL'], ['ssh', 'SSH'], ['docker', 'Docker container']].map(([v, l]) => h('option', { value: v, selected: draft.runsOn.kind === v || (draft.runsOn.kind === 'legacy' && v === 'default') }, l)));
-    const remote = draft.runsOn.kind === 'ssh' || draft.runsOn.kind === 'docker';
+      [['default', 'Workspace Default'], ['local', 'Local'], ['wsl', 'WSL'], ['ssh', 'SSH'], ['docker', 'Docker container'], ['sandbox', 'Docker Sandbox']].map(([v, l]) => h('option', { value: v, selected: draft.runsOn.kind === v || (draft.runsOn.kind === 'legacy' && v === 'default') }, l)));
+    const remote = ['ssh', 'docker', 'sandbox'].includes(draft.runsOn.kind);
     const cwdInput = h('input', { class: 'mono-input', placeholder: remote ? 'Path on the remote environment' : (floor.dir || 'e.g. C:\\projects\\app'), value: draft.cwd, oninput: (e) => { draft.cwd = e.target.value; } });
     const browse = h('button', { class: 'sheet-btn', disabled: remote, onclick: async () => { const dir = await call('files:pickDirectory'); if (dir) { draft.cwd = dir; cwdInput.value = dir; } } }, '\u{1F4C2} Browse\u2026');
 
@@ -235,6 +261,7 @@ async function terminalDialog({ mode, floor, node }) {
     error = '';
     if (r.kind === 'ssh' && !r.host?.trim()) error = 'Enter the SSH host.';
     else if (r.kind === 'docker' && !r.container?.trim()) error = 'Choose or enter a container.';
+    else if (r.kind === 'sandbox' && !r.sandbox?.trim()) error = 'Choose or create a sandbox.';
     else if (r.kind === 'wsl' && !r.distro) error = 'Choose a WSL distribution.';
     if (error) { tab = 'details'; render(); return; }
 
@@ -242,7 +269,7 @@ async function terminalDialog({ mode, floor, node }) {
     const title = draft.name.trim() || (command ? command.split(/\s+/)[0] : '') || 'Terminal';
     const data = {
       command,
-      runsOn: r.kind === 'default' ? undefined : { ...r, host: r.host?.trim(), user: r.user?.trim(), container: r.container?.trim() },
+      runsOn: r.kind === 'default' ? undefined : { ...r, host: r.host?.trim(), user: r.user?.trim(), container: r.container?.trim(), sandbox: r.sandbox?.trim() },
       cwd: draft.cwd.trim() === (floor.dir || '') ? '' : draft.cwd.trim(),
       monitor: draft.monitor, maestro: draft.maestro, persist: draft.persist,
       icon: draft.icon, color: draft.color, theme: draft.theme, fontFamily: draft.fontFamily, fontSize: draft.fontSize || 0, roleId: draft.roleId, accountId: draft.accountId,

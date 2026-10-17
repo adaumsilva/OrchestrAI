@@ -185,6 +185,12 @@ async function resolveLaunch(node) {
       const args = ['exec', '-it', ...(runs.user ? ['-u', runs.user] : []), ...(cwdOverride ? ['-w', cwdOverride] : []), runs.container, 'sh', '-c', inner];
       return { profile: { id: `docker:${runs.container}`, label: `Docker: ${runs.container}`, group: 'Docker', command: 'docker', args }, typed: '', remote: true };
     }
+    case 'sandbox': {
+      const { cmd, pre } = await call('sandbox:cli');
+      const inner = command || 'command -v bash >/dev/null 2>&1 && exec bash || exec sh';
+      const args = [...pre, 'sandbox', 'exec', '-it', ...(runs.user ? ['-u', runs.user] : []), ...(cwdOverride ? ['-w', cwdOverride] : []), runs.sandbox, 'sh', '-c', inner];
+      return { profile: { id: `sandbox:${runs.sandbox}`, label: `Sandbox: ${runs.sandbox}`, group: 'Docker', command: cmd, args }, typed: '', remote: true };
+    }
     default:
       return persistLaunch(node, { profile: await resolveProfile(node), typed: command, remote: false }, cwdOverride);
   }
