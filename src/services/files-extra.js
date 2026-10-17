@@ -112,7 +112,7 @@ function register(ipcMain) {
     if (root && path.isAbsolute(root)) {
       roots.add(path.resolve(root));
       // Served files are checked after symlinks and 8.3 short names are resolved, so the resolved root must be known too.
-      try { roots.add(fs.realpathSync(root)); } catch {}
+      try { roots.add(fs.realpathSync.native(root)); } catch {}
     }
     return true;
   });

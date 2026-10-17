@@ -27,6 +27,18 @@ const getWin = () => win;
 // In a packaged build the files live in app.asar, which external programs cannot run from; bin/ is unpacked next to it.
 const binDir = path.join(__dirname, '..', 'bin').replace(/app\.asar([\\/])/, 'app.asar.unpacked$1');
 
+// node-pty starts shells through a small helper program on macOS and Linux. Some install paths drop its execute bit, which
+// makes every terminal fail with "posix_spawnp failed"; restore it (harmless when it is already set).
+function ensureSpawnHelper() {
+  if (process.platform === 'win32') return;
+  try {
+    const base = path.join(path.dirname(require.resolve('node-pty/package.json')), 'prebuilds', `${process.platform}-${process.arch}`).replace(/app.asar([\/])/, 'app.asar.unpacked$1');
+    const helper = path.join(base, 'spawn-helper');
+    if (fs.existsSync(helper)) fs.chmodSync(helper, 0o755);
+  } catch {}
+}
+ensureSpawnHelper();
+
 const stateFile = () => path.join(app.getPath('userData'), 'workspace.json');
 
 function defaultShell() {

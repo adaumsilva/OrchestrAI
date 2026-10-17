@@ -38,11 +38,20 @@ module.exports = async (t) => {
   t.check('moving a node re-routes the trace', await t.js(`(() => { const f = activeFloor(); const before = JSON.stringify([...sims.values()].map((s) => s.circuit)); const n = f.nodes.find((x) => x.id === window.__ids.b); n.x += 140; place(n, rt.get(f.id).live.get(n.id).el); drawRopes(f); return new Promise((r) => setTimeout(() => r(before !== JSON.stringify([...sims.values()].map((s) => s.circuit))), 300)); })()`));
 
   // ---- ties: drag a rope to hold it ----
-  const grab = await t.js(`(() => { try {
-    const f = activeFloor(); const rope = f.ropes[0]; const dom = sims.get(rope.id).dom;
-    const len = dom.line.getTotalLength(); const p = dom.line.getPointAtLength(len * 0.3); const m = dom.line.getScreenCTM();
-    return { x: Math.round(m.a * p.x + m.e), y: Math.round(m.d * p.y + m.f), zoom: f.view.zoom, vx: f.view.x, vy: f.view.y };
+  // A point on the rope that is really on top (not under a node or the chip, and inside the window), found by looking.
+  const grabPoint = (index) => t.js(`(() => { try {
+    const f = activeFloor(); const rope = f.ropes[${index}]; const dom = sims.get(rope.id).dom;
+    const len = dom.line.getTotalLength(); const m = dom.line.getScreenCTM();
+    for (const k of [0.3, 0.25, 0.35, 0.2, 0.4, 0.15, 0.45, 0.1, 0.6, 0.7, 0.8]) {
+      const p = dom.line.getPointAtLength(len * k);
+      const x = Math.round(m.a * p.x + m.e), y = Math.round(m.d * p.y + m.f);
+      if (x < 5 || y < 5 || x > innerWidth - 5 || y > innerHeight - 5) continue;
+      const top = document.elementFromPoint(x, y);
+      if (top && top.classList.contains('rope-hit')) return { x, y, k };
+    }
+    return { err: 'no free point on the rope', w: innerWidth, h: innerHeight };
   } catch (e) { return { err: String(e) }; } })()`);
+  const grab = await grabPoint(0);
   if (grab.err) { t.check('rope handle is available', false, grab); return; }
   const wc = t.win.webContents;
   wc.sendInputEvent({ type: 'mouseMove', x: grab.x, y: grab.y });
@@ -50,14 +59,14 @@ module.exports = async (t) => {
   for (let i = 1; i <= 6; i++) wc.sendInputEvent({ type: 'mouseMove', x: grab.x + i * 12, y: grab.y + i * 20 });
   wc.sendInputEvent({ type: 'mouseUp', x: grab.x + 72, y: grab.y + 120, button: 'left', clickCount: 1 });
   await t.sleep(600);
-  const tied = await t.js(`(() => { const f = activeFloor(); const r = f.ropes[0]; const s = sims.get(r.id); return { pin: r.pin, passes: !!s.circuit && s.circuit.some((p, i) => i && Math.min(s.circuit[i - 1].x, p.x) - 1 <= r.pin.x && r.pin.x <= Math.max(s.circuit[i - 1].x, p.x) + 1 && Math.min(s.circuit[i - 1].y, p.y) - 1 <= r.pin.y && r.pin.y <= Math.max(s.circuit[i - 1].y, p.y) + 1), handle: s.dom.pinEl.style.display }; })()`);
+  const tied = await t.js(`(() => { const f = activeFloor(); const r = f.ropes[0]; const s = sims.get(r.id); if (!r.pin) return { pin: null }; return { pin: r.pin, passes: !!s.circuit && s.circuit.some((p, i) => i && Math.min(s.circuit[i - 1].x, p.x) - 1 <= r.pin.x && r.pin.x <= Math.max(s.circuit[i - 1].x, p.x) + 1 && Math.min(s.circuit[i - 1].y, p.y) - 1 <= r.pin.y && r.pin.y <= Math.max(s.circuit[i - 1].y, p.y) + 1), handle: s.dom.pinEl.style.display }; })()`);
   t.check('dragging a rope ties it at the drop point', tied.pin && tied.passes && tied.handle !== 'none', tied);
   const saved = await t.readSaved((s) => s.workspaces[0].floors[0].ropes.some((r) => r.pin));
   t.check('the tie is saved with the rope', saved.workspaces[0].floors[0].ropes.some((r) => r.pin && r.pin.x === tied.pin.x), saved.workspaces[0].floors[0].ropes);
 
   // a plain click on a rope must not tie it
   await t.js(`(() => { delete activeFloor().ropes[1].pin; return 0; })()`);
-  const grab2 = await t.js(`(() => { const f = activeFloor(); const dom = sims.get(f.ropes[1].id).dom; const len = dom.line.getTotalLength(); const p = dom.line.getPointAtLength(len * 0.3); const m = dom.line.getScreenCTM(); return { x: Math.round(m.a * p.x + m.e), y: Math.round(m.d * p.y + m.f) }; })()`);
+  const grab2 = await grabPoint(1);
   wc.sendInputEvent({ type: 'mouseMove', x: grab2.x, y: grab2.y });
   wc.sendInputEvent({ type: 'mouseDown', x: grab2.x, y: grab2.y, button: 'left', clickCount: 1 });
   wc.sendInputEvent({ type: 'mouseUp', x: grab2.x, y: grab2.y, button: 'left', clickCount: 1 });

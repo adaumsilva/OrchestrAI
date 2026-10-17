@@ -78,7 +78,7 @@ function register(ipcMain, getWin) {
   ipcMain.handle('updates:setAuto', (_e, on) => {
     auto = !!on;
     clearTimeout(autoTimer);
-    if (auto && (app.isPackaged || process.env.ORCH_UPDATER_MODULE)) autoTimer = setTimeout(() => { if (auto) check(); }, Number(process.env.ORCH_UPDATE_DELAY_MS) || 30000);
+    if (auto && !process.env.ORCH_SMOKE_OUT && (app.isPackaged || process.env.ORCH_UPDATER_MODULE)) autoTimer = setTimeout(() => { if (auto) check(); }, Number(process.env.ORCH_UPDATE_DELAY_MS) || 30000);
     return auto;
   });
 }

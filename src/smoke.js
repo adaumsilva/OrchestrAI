@@ -18,8 +18,10 @@ async function run(win, outFile) {
       const screen = () => js(`rt.get(state.active).live.get(${JSON.stringify(id)}).api.readScreen()`);
       await run('echo smoke-' + 'ok');
       result.checks.shellRuns = !!(await waitFor(async () => /smoke-ok/.test(await screen()), 15000));
+      if (!result.checks.shellRuns) result.screen = String(await screen()).slice(-600);
       await run('orchestrai help');
       result.checks.cliOnPath = !!(await waitFor(async () => /direct the OrchestrAI canvas/i.test(await screen()), 20000));
+      if (!result.checks.cliOnPath) result.screen = String(await screen()).slice(-600);
     }
     result.ok = Object.values(result.checks).every(Boolean);
   } catch (e) {
