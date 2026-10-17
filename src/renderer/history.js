@@ -74,6 +74,7 @@ function applySnapshot(f, snap) {
       }
     }
     f.ropes = JSON.parse(JSON.stringify(snap.ropes));
+    if (typeof reconcileCrossRopes === 'function') reconcileCrossRopes(f);
     setSelection(f, []);
     wakeRopes();
     glide?.(f, 300);

@@ -448,6 +448,7 @@ function removeNode(f, id, skipSave) {
   R?.live.delete(id);
   f.nodes = f.nodes.filter((n) => n.id !== id);
   f.ropes = f.ropes.filter((r) => r.a !== id && r.b !== id);
+  if (typeof dropRemoteRopesTo === 'function') dropRemoteRopesTo(f.id, id); // cross-floor ropes end here too
   if (!skipSave) { drawRopes(f); save(); }
 }
 
@@ -455,8 +456,8 @@ function removeNode(f, id, skipSave) {
 function linkedNodes(f, id) {
   const R = rt.get(f.id);
   return f.ropes
-    .filter((r) => r.a === id || r.b === id)
-    .map((r) => R.live.get(r.a === id ? r.b : r.a))
+    .filter((r) => r.a === id || (r.b === id && !r.rf))
+    .map((r) => (r.rf ? rt.get(r.rf)?.live.get(r.b) : R.live.get(r.a === id ? r.b : r.a)))
     .filter(Boolean);
 }
 

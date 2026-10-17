@@ -476,3 +476,10 @@ body.sb-open #viewport { left: 190px; }
 .pr-badge { font-size: 10px; padding: 0 6px; border-radius: 8px; background: var(--hover); color: var(--fg-muted); cursor: pointer; margin-left: 4px; }
 .pr-badge.pass { background: #30d15833; color: var(--success); } .pr-badge.fail { background: #ff453a33; color: var(--danger); }
 .pr-badge.pending { background: #ff9f0a33; color: var(--warning); } .pr-badge.merged { background: #bf5af233; color: #bf5af2; } .pr-badge.closed { color: var(--fg-subtle); }
+
+/* Cross-floor rope stubs */
+.rope-stub { position: absolute; z-index: 3; display: flex; align-items: center; gap: 2px; height: 24px; padding: 0 4px 0 10px; border: 1px dashed var(--rope); border-radius: 12px; background: var(--card); color: var(--fg-muted); font-size: 11px; white-space: nowrap; max-width: 260px; }
+.rope-stub .stub-label { overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.rope-stub .stub-label:hover { color: var(--accent); }
+.rope-stub .stub-x { padding: 0 5px; background: none; color: var(--fg-subtle); font-size: 10px; }
+.rope-stub.active { border-color: var(--accent); color: var(--accent); }

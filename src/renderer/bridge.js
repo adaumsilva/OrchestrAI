@@ -29,8 +29,8 @@ const PEER_METHODS = ['peers', 'ask', 'check'];
 
 // Terminals joined to this one by a rope (ropes stay within a floor).
 function peersOf(caller) {
-  const ids = caller.floor.ropes.filter((r) => r.a === caller.node.id || r.b === caller.node.id).map((r) => (r.a === caller.node.id ? r.b : r.a));
-  return allTerminals().filter((t) => t.floor.id === caller.floor.id && ids.includes(t.node.id));
+  const mine = caller.floor.ropes.filter((r) => r.a === caller.node.id || (r.b === caller.node.id && !r.rf));
+  return allTerminals().filter((t) => mine.some((r) => (r.rf ? t.floor.id === r.rf && t.node.id === r.b : t.floor.id === caller.floor.id && t.node.id === (r.a === caller.node.id ? r.b : r.a))));
 }
 
 function resolvePeer(caller, scope, ref) {
@@ -56,7 +56,7 @@ async function askPeer(caller, target, text, { timeoutMs = 120000, quietMs = 300
   if (!target.entry) throw new Error('That terminal is not running.');
   const read = () => target.entry.api.readScreen?.() || '';
   const before = read();
-  const flash = () => { if (target.floor.id === caller.floor.id) flashRope(caller.floor, caller.node.id, target.node.id); };
+  const flash = () => flashRope(caller.floor, caller.node.id, target.node.id);
   flash();
   await target.entry.api.send(text);
   const start = Date.now();

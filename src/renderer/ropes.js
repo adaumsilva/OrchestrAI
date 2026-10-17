@@ -112,6 +112,7 @@ function stepRopes() {
   if (!f) return;
   let moving = false;
   for (const rope of f.ropes) {
+    if (rope.rf) continue; // cross-floor ropes are drawn as stubs (crossfloor.js)
     const a = f.nodes.find((n) => n.id === rope.a), b = f.nodes.find((n) => n.id === rope.b);
     if (!a || !b) continue;
     const { start, end } = pinsFor(a, b);
@@ -134,6 +135,7 @@ function stepRopes() {
     sims.delete(id);
   }
   drawPreview(f);
+  if (typeof drawStubs === 'function') drawStubs(f);
   if (moving || connecting) ropeFrame = requestAnimationFrame(stepRopes);
 }
 
@@ -141,7 +143,8 @@ const wakeRopes = () => { if (!ropeFrame) ropeFrame = requestAnimationFrame(step
 function drawRopes() { wakeRopes(); } // called whenever nodes move, resize or ropes change
 
 function flashRope(f, aId, bId) {
-  const rope = f.ropes.find((r) => (r.a === aId && r.b === bId) || (r.a === bId && r.b === aId));
+  const rope = f.ropes.find((r) => (r.a === aId && r.b === bId) || (r.a === bId && r.b === aId && !r.rf));
+  if (rope?.rf) { flashStub(rope.id); wakeRopes(); return; }
   const sim = rope && sims.get(rope.id);
   if (!sim) return;
   sim.flashUntil = performance.now() + 900;
@@ -150,6 +153,7 @@ function flashRope(f, aId, bId) {
 
 function removeRope(f, id) {
   f.ropes = f.ropes.filter((r) => r.id !== id);
+  if (typeof removeRopeEverywhere === 'function') removeRopeEverywhere(id);
   save();
   wakeRopes();
 }
