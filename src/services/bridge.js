@@ -1,11 +1,13 @@
-// Local control bridge for "Maestro" terminals. Terminals promoted to conductors get ORCHESTRAI_URL / _TOKEN
-// in their environment and an `orchestrai` command on PATH; requests are forwarded to the renderer, which owns
+// Local control bridge. Local terminals get ORCHESTRAI_URL / _TOKEN in their environment and an `orchestrai`
+// command on PATH (Maestro terminals can direct any terminal, others only talk to connected peers); requests are forwarded to the renderer, which owns
 // the canvas, and the answer is sent back. It listens on 127.0.0.1 only and requires the per-run token.
 const http = require('http');
 const crypto = require('crypto');
 const path = require('path');
 
-const token = crypto.randomBytes(24).toString('hex');
+// Every terminal gets its own token. The token fixes who is calling and what they may do ('maestro' or 'peer'),
+// so a terminal cannot pretend to be another one.
+const tokens = new Map(); // token -> { terminalId, scope }
 const pending = new Map();
 let server = null;
 let port = 0;
@@ -26,7 +28,8 @@ function start(getWin, ipcMain) {
       res.end(JSON.stringify(body));
     };
     if (req.method !== 'POST' || req.url !== '/rpc') return send(404, { ok: false, error: 'Not found' });
-    if (req.headers.authorization !== `Bearer ${token}`) return send(401, { ok: false, error: 'Unauthorized' });
+    const who = tokens.get(String(req.headers.authorization || '').replace(/^Bearer /, ''));
+    if (!who) return send(401, { ok: false, error: 'Unauthorized' });
     let raw = '';
     req.on('data', (c) => { raw += c; if (raw.length > 1e6) req.destroy(); });
     req.on('end', () => {
@@ -36,9 +39,9 @@ function start(getWin, ipcMain) {
       if (!win || win.isDestroyed()) return send(503, { ok: false, error: 'OrchestrAI window is not available' });
       const id = nextId++;
       new Promise((resolve, reject) => {
-        const timer = setTimeout(() => { pending.delete(id); reject(new Error('Timed out waiting for the app')); }, 20000);
+        const timer = setTimeout(() => { pending.delete(id); reject(new Error('Timed out waiting for the app')); }, 20000 + (msg.method === 'ask' ? (Number(msg.params?.timeout) || 120) * 1000 : 0));
         pending.set(id, { resolve, reject, timer });
-        win.webContents.send('bridge:request', { id, method: String(msg.method || ''), params: msg.params || {}, from: String(msg.from || '') });
+        win.webContents.send('bridge:request', { id, method: String(msg.method || ''), params: msg.params || {}, from: who.terminalId, scope: who.scope });
       }).then((result) => send(200, { ok: true, result }), (err) => send(200, { ok: false, error: err.message }));
     });
   });
@@ -47,8 +50,11 @@ function start(getWin, ipcMain) {
   });
 }
 
-// Environment for a Maestro terminal.
-function envFor(terminalId, binDir) {
+// Environment for a terminal; scope is 'maestro' (may address any terminal) or 'peer' (only ropes-connected ones).
+function envFor(terminalId, binDir, scope = 'peer') {
+  for (const [t, w] of tokens) if (w.terminalId === terminalId) tokens.delete(t); // a restarted terminal gets a fresh token
+  const token = crypto.randomBytes(24).toString('hex');
+  tokens.set(token, { terminalId, scope });
   return {
     ORCHESTRAI_URL: `http://127.0.0.1:${port}`,
     ORCHESTRAI_TOKEN: token,

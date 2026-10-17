@@ -15,6 +15,11 @@ Usage:
   orchestrai close <terminal>                   Close a terminal
   orchestrai roles                              List the available roles
 
+Terminals joined to this one by a rope (any terminal, Maestro or not):
+  orchestrai peers                              List the connected terminals
+  orchestrai ask <peer> <text...> [--timeout S] Send text to a peer, wait until it goes quiet, print its reply
+  orchestrai check <peer> [--lines N]           Show a peer's status and latest output without sending anything
+
 <terminal> is an id or a unique terminal name.
 Add --json to list/roles for machine-readable output.`;
 
@@ -35,7 +40,7 @@ function parse(argv) {
 function rpc(method, params) {
   const url = process.env.ORCHESTRAI_URL, token = process.env.ORCHESTRAI_TOKEN;
   if (!url || !token) {
-    console.error('Not running inside a Maestro terminal (ORCHESTRAI_URL is not set). Enable "Maestro" in the terminal settings.');
+    console.error('Not running inside an OrchestrAI terminal (ORCHESTRAI_URL is not set).');
     process.exit(2);
   }
   return new Promise((resolve, reject) => {
@@ -90,6 +95,23 @@ function table(rows, cols) {
       case 'close': {
         if (!rest[0]) throw new Error('Usage: orchestrai close <terminal>');
         await rpc('close', { target: rest[0] });
+        break;
+      }
+      case 'peers': {
+        const list = await rpc('peers', {});
+        console.log(flags.json ? JSON.stringify(list, null, 2) : table(list, ['id', 'name', 'status', 'role']));
+        break;
+      }
+      case 'ask': {
+        if (rest.length < 2) throw new Error('Usage: orchestrai ask <peer> <text...> [--timeout S]');
+        console.log(await rpc('ask', { target: rest[0], text: rest.slice(1).join(' '), timeout: flags.timeout ? Number(flags.timeout) : undefined, quiet: flags.quiet ? Number(flags.quiet) : undefined }));
+        break;
+      }
+      case 'check': {
+        if (!rest[0]) throw new Error('Usage: orchestrai check <peer> [--lines N]');
+        const r = await rpc('check', { target: rest[0], lines: flags.lines ? Number(flags.lines) : 30 });
+        console.log(`status: ${r.status}
+${r.screen}`);
         break;
       }
       case 'roles': {

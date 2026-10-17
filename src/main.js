@@ -79,7 +79,7 @@ function resolveCommand(command, args) {
 }
 
 // profile: { command, args, cdFlag }; env: extra variables for this terminal.
-ipcMain.handle('pty:spawn', (_e, { id, cwd, cols, rows, profile, env, maestro }) => {
+ipcMain.handle('pty:spawn', (_e, { id, cwd, cols, rows, profile, env, maestro, peer }) => {
   if (ptys.has(id)) return { ok: true, reused: true };
   const dir = cwd && fs.existsSync(cwd) ? cwd : process.env.USERPROFILE || process.env.HOME;
   let args = Array.isArray(profile?.args) ? [...profile.args] : [];
@@ -98,7 +98,7 @@ ipcMain.handle('pty:spawn', (_e, { id, cwd, cols, rows, profile, env, maestro })
       cols: cols || 80,
       rows: rows || 24,
       cwd: profile?.cdFlag ? undefined : dir,
-      env: { ...process.env, ...(env || {}), TERM_PROGRAM: 'OrchestrAI', ...(maestro ? bridge.envFor(id, path.join(__dirname, '..', 'bin')) : {}) },
+      env: { ...process.env, ...(env || {}), TERM_PROGRAM: 'OrchestrAI', ...(maestro || peer ? bridge.envFor(id, path.join(__dirname, '..', 'bin'), maestro ? 'maestro' : 'peer') : {}) },
     });
   } catch (err) {
     return { ok: false, error: `${requested}: ${String(err.message || err)}` };

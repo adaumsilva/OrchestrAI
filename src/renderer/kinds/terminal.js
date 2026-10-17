@@ -177,6 +177,7 @@ NodeKinds.terminal = {
         id: node.id, cols: term.cols, rows: term.rows, profile,
         cwd: remote ? undefined : startDir,
         maestro: !!node.data.maestro && !remote && !(profile?.cdFlag),
+        peer: !remote && !(profile?.cdFlag),
       });
       if (r.ok && reattached) { setStatus('restored'); term.write('\x1b[2m— reattached to the running tmux session —\x1b[0m\r\n'); }
       if (!r.ok) {
