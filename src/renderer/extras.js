@@ -165,6 +165,7 @@ const SHORTCUTS = [
   ['Undo / redo', 'Ctrl+Z / Ctrl+Shift+Z (nodes, ropes, layout)'],
   ['Next / previous node', 'Alt+] / Alt+['],
   ['Next / previous floor', 'Ctrl+PageDown / Ctrl+PageUp'],
+  ['Command palette', 'Ctrl+K searches commands, nodes on every floor, floors and presets; Enter runs, Esc closes'],
   ['Shortcuts', '?'],
 ];
 

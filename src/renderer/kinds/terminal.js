@@ -34,7 +34,7 @@ NodeKinds.terminal = {
 
     term.attachCustomKeyEventHandler((e) => {
       // Let app-level navigation shortcuts through instead of sending them to the shell.
-      if ((e.altKey && (e.key === '[' || e.key === ']')) || (e.ctrlKey && (e.key === 'PageUp' || e.key === 'PageDown'))) return false;
+      if (((e.ctrlKey || e.metaKey) && !e.altKey && (e.key.toLowerCase() === 'k' || (e.shiftKey && e.key.toLowerCase() === 'p'))) || (e.altKey && (e.key === '[' || e.key === ']')) || (e.ctrlKey && (e.key === 'PageUp' || e.key === 'PageDown'))) return false;
       if (e.type !== 'keydown') return true;
       const k = e.key.toLowerCase();
       if (e.ctrlKey && e.shiftKey && k === 'c') { copy(); return false; }
