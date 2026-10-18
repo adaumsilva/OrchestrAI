@@ -103,7 +103,7 @@ NodeKinds.portal = {
     const url = h('input', { value: node.data.url });
     const holder = h('div', { class: 'portal-holder' });
     const banner = h('div', { class: 'portal-banner', style: 'display:none' });
-    let view = null, ready = false;
+    let view = null, ready = false, load = { state: 'idle', error: '' };
     const nav = (fn) => () => { try { fn(); } catch {} };
 
     function buildView() {
@@ -113,6 +113,11 @@ NodeKinds.portal = {
       if (ua) attrs.useragent = ua;
       view = h('webview', attrs);
       view.addEventListener('dom-ready', () => { ready = true; });
+      // load state for automation: did the last navigation finish, or fail (and why)
+      load = { state: 'loading', error: '' };
+      view.addEventListener('did-start-loading', () => { load = { state: 'loading', error: '' }; });
+      view.addEventListener('did-stop-loading', () => { if (load.state === 'loading') load = { state: 'ok', error: '' }; });
+      view.addEventListener('did-fail-load', (e) => { if (e.isMainFrame && e.errorCode !== -3) load = { state: 'fail', error: `${e.errorDescription || 'load failed'} (${e.errorCode}) for ${e.validatedURL || node.data.url}` }; });
       view.addEventListener('did-navigate', onNav);
       view.addEventListener('did-navigate-in-page', onNav);
       view.addEventListener('page-title-updated', (e) => { node.data.pageTitle = e.title; });
@@ -196,6 +201,7 @@ NodeKinds.portal = {
     const designBtn = addButton('◩', 'Design mode: pick an element or drag a region to send to a connected terminal', () => (picking ? cancelPick() : startPick()));
 
     const pageJs = (code) => view.executeJavaScript(code);
+    const probe = (sel) => pageJs(`(() => { const el = document.querySelector(${JSON.stringify(sel)}); if (!el) return 'missing'; const r = el.getBoundingClientRect(), cs = getComputedStyle(el); if ((!r.width && !r.height) || cs.visibility === 'hidden' || cs.display === 'none') return 'hidden'; if (el.disabled || el.getAttribute('aria-disabled') === 'true') return 'disabled'; return 'ok'; })()`);
     function cancelPick() { picking = false; designBtn.classList.remove('active'); banner.style.display = 'none'; pageJs('window.__orchPicker && window.__orchPicker.stop(); 0').catch(() => {}); }
 
     async function pick() {
@@ -261,10 +267,65 @@ NodeKinds.portal = {
       portal: {
         url: () => node.data.url,
         title: () => node.data.pageTitle || '',
-        navigate: (u) => { node.data.url = normalize(u); view.loadURL(node.data.url); save(); },
+        navigate: (u) => { node.data.url = normalize(u); load = { state: 'loading', error: '' }; view.loadURL(node.data.url).catch(() => {}); save(); },
         text: async (max = 20000) => String(await pageJs('document.body ? document.body.innerText : ""')).slice(0, max),
-        click: (sel) => pageJs(`(() => { const el = document.querySelector(${JSON.stringify(sel)}); if (!el) return false; el.click(); return true; })()`),
-        type: (sel, text) => pageJs(`(() => { const el = document.querySelector(${JSON.stringify(sel)}); if (!el) return false; el.focus(); el.value = ${JSON.stringify(text)}; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`),
+        // Every action first says why it cannot run: no match, not visible, disabled.
+        probe,
+        click: async (sel) => {
+          const st = await probe(sel);
+          if (st !== 'ok') return st;
+          await pageJs(`(() => { const el = document.querySelector(${JSON.stringify(sel)}); el.scrollIntoView({ block: 'center' }); el.click(); })()`);
+          return 'ok';
+        },
+        // Plain inputs are filled (React-safe); rich editors (contenteditable) get real input at the caret. opts: { clear, submit }
+        type: async (sel, text, opts = {}) => {
+          const st = await probe(sel);
+          if (st !== 'ok') return st;
+          const kind = await pageJs(`(() => {
+            const el = document.querySelector(${JSON.stringify(sel)});
+            el.scrollIntoView({ block: 'center' }); el.focus();
+            if (el.isContentEditable) {
+              const sel = getSelection(), r = document.createRange();
+              r.selectNodeContents(el); if (!${!!opts.clear}) r.collapse(false);
+              sel.removeAllRanges(); sel.addRange(r);
+              return 'editable';
+            }
+            if (!('value' in el)) return 'unsupported';
+            const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+            const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+            const next = ${JSON.stringify(String(text))};
+            const val = ${!!opts.clear} || !el.value ? next : el.value + next;
+            if (setter) setter.call(el, val); else el.value = val;
+            el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true }));
+            return 'input';
+          })()`);
+          if (kind === 'unsupported') return 'unsupported';
+          if (kind === 'editable') await call('portal:insertText', view.getWebContentsId(), String(text));
+          if (opts.submit) await entry.api.portal.press('Enter');
+          return 'ok';
+        },
+        // "Enter", "Tab", "Shift+Tab", "Ctrl+A"...
+        press: async (combo) => {
+          const parts = String(combo || '').split('+').map((x) => x.trim()).filter(Boolean);
+          const key = parts.pop();
+          if (!key) return 'nokey';
+          const names = { esc: 'Escape', return: 'Enter', del: 'Delete', space: 'Space', ' ': 'Space' };
+          const mods = parts.map((m) => ({ ctrl: 'control', cmd: 'meta', option: 'alt' }[m.toLowerCase()] || m.toLowerCase()));
+          const r = await call('portal:key', view.getWebContentsId(), names[key.toLowerCase()] || (key.length === 1 ? key : key[0].toUpperCase() + key.slice(1)), mods);
+          return r.error ? r.error : 'ok';
+        },
+        // Resolves when the selector is usable, or the page finished loading (selector "load"). Returns 'ok' or a reason.
+        wait: async (sel, timeoutMs = 10000) => {
+          const end = Date.now() + timeoutMs;
+          for (;;) {
+            if (sel === 'load' || !sel) { if (load.state === 'ok') return 'ok'; if (load.state === 'fail') return 'loadfail'; }
+            else { const st = await probe(sel).catch(() => 'missing'); if (st === 'ok') return 'ok'; }
+            if (Date.now() > end) return 'timeout';
+            await new Promise((r) => setTimeout(r, 150));
+          }
+        },
+        loadError: () => (load.state === 'fail' ? load.error : ''),
+        loadState: () => load.state,
         shot: () => call('portal:capture', view.getWebContentsId(), null),
         pick: () => pageJs(`(${portalPagePicker})()`),
         partition: () => view.partition || view.getAttribute('partition'),

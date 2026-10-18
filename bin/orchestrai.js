@@ -29,7 +29,9 @@ Browser portals joined to this terminal by a rope (a Maestro can use any portal;
   orchestrai portal nav <portal> <url>          Navigate (use "-" for <portal> when there is only one)
   orchestrai portal text <portal> [--max N]     Print the page's visible text
   orchestrai portal click <portal> <selector>   Click the first element matching a CSS selector
-  orchestrai portal type <portal> <selector> <text...>   Fill an input
+  orchestrai portal type <portal> <selector> <text...> [--submit] [--clear]   Type into an input or a rich editor (contenteditable); --clear replaces the content, --submit presses Enter after
+  orchestrai portal press <portal> <key>        Press a real key: Enter, Tab, Shift+Tab, Escape, Up, Ctrl+A ...
+  orchestrai portal wait <portal> [selector|load] [--timeout S]   Wait until the selector is visible (default: the page finished loading)
   orchestrai portal shot <portal>               Save a screenshot and print its file path
 
 Android devices: a Device node joined to this terminal by a rope (a Maestro can use any; use "-" for <device> when only one is connected):
@@ -57,7 +59,7 @@ function parse(argv) {
     const a = argv[i];
     if (a.startsWith('--')) {
       const key = a.slice(2);
-      if (['json', 'no-enter'].includes(key)) flags[key] = true;
+      if (['json', 'no-enter', 'submit', 'clear'].includes(key)) flags[key] = true;
       else flags[key] = argv[++i];
     } else positional.push(a);
   }
@@ -190,7 +192,7 @@ function table(rows, cols) {
           console.log(flags.json ? JSON.stringify(list, null, 2) : table(list, ['id', 'name', 'url']));
         } else if (sub === 'nav') {
           if (!args[0]) throw new Error('Usage: orchestrai portal nav <portal> <url>');
-          console.log((await rpc('portal-nav', { target, url: args.join(' ') })).url);
+          console.log((await rpc('portal-nav', { target, url: args.join(' '), timeout: flags.timeout ? Number(flags.timeout) : undefined })).url);
         } else if (sub === 'text') {
           console.log(await rpc('portal-text', { target, max: flags.max ? Number(flags.max) : undefined }));
         } else if (sub === 'click') {
@@ -198,10 +200,15 @@ function table(rows, cols) {
           await rpc('portal-click', { target, selector: args.join(' ') });
         } else if (sub === 'type') {
           if (args.length < 2) throw new Error('Usage: orchestrai portal type <portal> <selector> <text...>');
-          await rpc('portal-type', { target, selector: args[0], text: args.slice(1).join(' ') });
+          await rpc('portal-type', { target, selector: args[0], text: args.slice(1).join(' '), submit: !!flags.submit, clear: !!flags.clear });
+        } else if (sub === 'press') {
+          if (!args[0]) throw new Error('Usage: orchestrai portal press <portal> <key>');
+          await rpc('portal-press', { target, key: args.join('+') });
+        } else if (sub === 'wait') {
+          await rpc('portal-wait', { target, selector: args[0] || 'load', timeout: flags.timeout ? Number(flags.timeout) : undefined });
         } else if (sub === 'shot') {
           console.log((await rpc('portal-shot', { target })).path);
-        } else throw new Error('Usage: orchestrai portal list | nav | text | click | type | shot');
+        } else throw new Error('Usage: orchestrai portal list | nav | text | click | type | press | wait | shot');
         break;
       }
       case 'floor-status': {

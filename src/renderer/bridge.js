@@ -25,7 +25,7 @@ function findTerminal(ref) {
 const roleSummary = (r) => r.instructions.replace(/\s+/g, ' ').slice(0, 80);
 
 // ---------- peer messaging (rope = permission) ----------
-const PEER_METHODS = ['device-list', 'device-info', 'device-shot', 'device-tap', 'device-swipe', 'device-type', 'device-key', 'device-ui', 'device-launch', 'peers', 'ask', 'check', 'floor-status', 'portal-list', 'portal-nav', 'portal-text', 'portal-click', 'portal-type', 'portal-shot'];
+const PEER_METHODS = ['device-list', 'device-info', 'device-shot', 'device-tap', 'device-swipe', 'device-type', 'device-key', 'device-ui', 'device-launch', 'peers', 'ask', 'check', 'floor-status', 'portal-list', 'portal-nav', 'portal-text', 'portal-click', 'portal-type', 'portal-press', 'portal-wait', 'portal-shot'];
 
 // Portals a terminal may drive: those joined to it by a rope (a Maestro may drive any).
 function portalsFor(caller, scope) {
@@ -64,6 +64,19 @@ function resolveDevice(caller, scope, ref) {
   if (hits.length === 1) return hits[0];
   if (hits.length > 1) throw new Error('"' + ref + '" matches ' + hits.length + ' device nodes; use an id: ' + hits.map((d) => d.node.id).join(', '));
   throw new Error(all.length ? 'No device node "' + ref + '" connected to this terminal.' : 'No device node is connected to this terminal. Add a Device node and connect it with a rope first.');
+}
+
+// Turns a portal action's outcome into a specific error.
+function portalOk(r, what, isKey) {
+  if (r === 'ok') return;
+  const w = '"' + what + '"';
+  throw new Error({
+    missing: 'No element matches ' + w + '.',
+    hidden: 'The element ' + w + ' exists but is not visible (hidden or zero size); scroll, open its container or wait for it.',
+    disabled: 'The element ' + w + ' is disabled.',
+    unsupported: 'The element ' + w + ' is not an input or an editable area.',
+    nokey: 'No key given.',
+  }[r] || (isKey ? 'Key press failed: ' + r : String(r)));
 }
 
 function resolvePortal(caller, scope, ref) {
@@ -181,18 +194,30 @@ async function bridgeHandle(method, p, from, scope) {
       case 'portal-nav': {
         const p = resolvePortal(caller, scope, p_.target);
         p.api.navigate(String(p_.url || ''));
+        const r = await p.api.wait('load', (Number(p_.timeout) || 20) * 1000);
+        if (r === 'loadfail') throw new Error('Navigation failed: ' + p.api.loadError());
+        if (r === 'timeout') throw new Error('The page did not finish loading within ' + (Number(p_.timeout) || 20) + 's (' + p.api.url() + '). It may still be loading; use "portal wait load".');
         return { url: p.api.url() };
       }
       case 'portal-text':
         return resolvePortal(caller, scope, p_.target).api.text(Number(p_.max) || 20000);
       case 'portal-click': {
-        const ok = await resolvePortal(caller, scope, p_.target).api.click(String(p_.selector || ''));
-        if (!ok) throw new Error('No element matches "' + p_.selector + '".');
+        portalOk(await resolvePortal(caller, scope, p_.target).api.click(String(p_.selector || '')), p_.selector);
         return { ok: true };
       }
       case 'portal-type': {
-        const ok = await resolvePortal(caller, scope, p_.target).api.type(String(p_.selector || ''), String(p_.text ?? ''));
-        if (!ok) throw new Error('No element matches "' + p_.selector + '".');
+        portalOk(await resolvePortal(caller, scope, p_.target).api.type(String(p_.selector || ''), String(p_.text ?? ''), { clear: !!p_.clear, submit: !!p_.submit }), p_.selector);
+        return { ok: true };
+      }
+      case 'portal-press': {
+        portalOk(await resolvePortal(caller, scope, p_.target).api.press(String(p_.key || '')), p_.key, true);
+        return { ok: true };
+      }
+      case 'portal-wait': {
+        const secs = Number(p_.timeout) || 10;
+        const r = await resolvePortal(caller, scope, p_.target).api.wait(String(p_.selector || 'load'), secs * 1000);
+        if (r === 'timeout') throw new Error('Timed out after ' + secs + 's waiting for ' + (p_.selector && p_.selector !== 'load' ? '"' + p_.selector + '" to appear' : 'the page to load') + '.');
+        if (r === 'loadfail') throw new Error('Navigation failed: ' + resolvePortal(caller, scope, p_.target).api.loadError());
         return { ok: true };
       }
       case 'portal-shot': {

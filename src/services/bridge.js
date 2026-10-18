@@ -39,7 +39,7 @@ function start(getWin, ipcMain) {
       if (!win || win.isDestroyed()) return send(503, { ok: false, error: 'OrchestrAI window is not available' });
       const id = nextId++;
       new Promise((resolve, reject) => {
-        const timer = setTimeout(() => { pending.delete(id); reject(new Error('Timed out waiting for the app')); }, 20000 + (msg.method === 'ask' ? (Number(msg.params?.timeout) || 120) * 1000 : 0));
+        const timer = setTimeout(() => { pending.delete(id); reject(new Error('Timed out waiting for the app')); }, 20000 + (/^portal-(nav|wait)$/.test(msg.method) ? (Number(msg.params?.timeout) || 20) * 1000 : 0) + (msg.method === 'ask' ? (Number(msg.params?.timeout) || 120) * 1000 : 0));
         pending.set(id, { resolve, reject, timer });
         win.webContents.send('bridge:request', { id, method: String(msg.method || ''), params: msg.params || {}, from: who.terminalId, scope: who.scope });
       }).then((result) => send(200, { ok: true, result }), (err) => send(200, { ok: false, error: err.message }));

@@ -26,6 +26,33 @@ function register(ipcMain) {
       return { error: e.message };
     }
   });
+  const portalWc = (id) => {
+    const wc = webContents.fromId(Number(id));
+    return wc && !wc.isDestroyed() && wc.getType() === 'webview' ? wc : null;
+  };
+  // Real key presses (Enter submits forms, Tab moves between fields) rather than synthetic page events.
+  // key is an Electron keyCode name or a single character; modifiers: shift, control, alt, meta.
+  ipcMain.handle('portal:key', async (_e, id, key, modifiers) => {
+    const wc = portalWc(id);
+    if (!wc) return { error: 'The portal is not available.' };
+    const mods = (Array.isArray(modifiers) ? modifiers : []).filter((m) => ['shift', 'control', 'alt', 'meta'].includes(m));
+    const k = String(key || '');
+    if (!k) return { error: 'No key given.' };
+    wc.focus();
+    wc.sendInputEvent({ type: 'keyDown', keyCode: k, modifiers: mods });
+    if (k === 'Enter') wc.sendInputEvent({ type: 'char', keyCode: String.fromCharCode(13), modifiers: mods });
+    else if (k.length === 1 && !mods.includes('control') && !mods.includes('meta')) wc.sendInputEvent({ type: 'char', keyCode: k, modifiers: mods });
+    wc.sendInputEvent({ type: 'keyUp', keyCode: k, modifiers: mods });
+    return { ok: true };
+  });
+  // Inserts text at the focused element as real input, which rich editors (contenteditable, ProseMirror, Draft...) accept.
+  ipcMain.handle('portal:insertText', async (_e, id, text) => {
+    const wc = portalWc(id);
+    if (!wc) return { error: 'The portal is not available.' };
+    wc.focus();
+    await wc.insertText(String(text ?? ''));
+    return { ok: true };
+  });
 }
 
 module.exports = { register };

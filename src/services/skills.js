@@ -6,7 +6,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const VERSION = 2;
+const VERSION = 3;
 const BEGIN = '<!-- orchestrai:begin -->';
 const END = '<!-- orchestrai:end -->';
 const home = () => process.env.ORCH_HOME || os.homedir();
@@ -26,7 +26,7 @@ Terminals joined to yours by a rope are your peers. You can only reach those.
 ## Report progress and use browser portals
 - \`orchestrai floor-status <text...> [--state working|waiting|blocked|done]\` - show what you are doing on the floor tab (no text clears it)
 - A Device node joined to you by a rope is an Android phone or emulator you can drive: \`orchestrai device list|shot|ui|tap|swipe|type|key|launch\` (\`shot\` prints an image path, \`ui\` lists elements with tap coordinates)
-- A portal joined to you by a rope is a browser you can drive: \`orchestrai portal list|nav|text|click|type|shot\` (use \`-\` as the portal when only one is connected)
+- A portal joined to you by a rope is a browser you can drive: \`orchestrai portal list|nav|text|click|type|press|wait|shot\` (use \`-\` as the portal when only one is connected)
 
 ## If you are a Maestro (conductor) terminal
 - \`orchestrai list\` - every terminal on the canvas
