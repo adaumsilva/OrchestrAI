@@ -49,10 +49,6 @@ Download an installer from the [releases page](https://github.com/adaumsilva/Orc
 ## Screenshots
 ![Task manager showing Claude Code and Codex running, with CPU, memory, tokens and limits](docs/images/tasks.png)
 
-![Terminals and notes inside a colored group, joined by dashed ropes](docs/images/ropes-groups.png)
-
-![Command palette searching across workspaces, with the workspaces sidebar open](docs/images/palette-workspaces.png)
-
 ![The terminal settings sheet](docs/images/terminal-sheet.png)
 
 Regenerate them with `ORCH_TEST=tests/e2e/screenshots.script.js electron tests/e2e/entry.js`.
