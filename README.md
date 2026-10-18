@@ -5,7 +5,7 @@
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 [![good first issues](https://img.shields.io/github/issues/adaumsilva/OrchestrAI/good%20first%20issue?label=good%20first%20issues&color=7057ff)](https://github.com/adaumsilva/OrchestrAI/labels/good%20first%20issue)
 
-**A spatial canvas for running AI coding agents side by side.** Arrange terminals, notes, git, files, browsers and Android devices on an infinite canvas, connect them with ropes, run each agent in an isolated git worktree ("floor"), and let a *Maestro* terminal conduct the rest. Works with Claude Code, Codex, OpenCode, Antigravity or any CLI. Built with Electron, xterm.js and node-pty.
+**A spatial canvas for orchestrating LLMs and AI coding agents side by side.** Arrange terminals, notes, git, files, browsers and Android devices on an infinite canvas, connect them with ropes, run each agent in an isolated git worktree ("floor"), and let a *Maestro* terminal conduct the rest. Works with Claude Code, Codex, OpenCode, Antigravity or any CLI. Built with Electron, xterm.js and node-pty.
 
 > Independent open-source project. It is not affiliated with or endorsed by any similar product.
 
@@ -50,8 +50,6 @@ Download an installer from the [releases page](https://github.com/adaumsilva/Orc
 ![Task manager showing Claude Code and Codex running, with CPU, memory, tokens and limits](docs/images/tasks.png)
 
 ![The terminal settings sheet](docs/images/terminal-sheet.png)
-
-Regenerate them with `ORCH_TEST=tests/e2e/screenshots.script.js electron tests/e2e/entry.js`.
 
 ## Contributing
 Contributions are welcome, including your first one.
