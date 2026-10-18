@@ -36,7 +36,7 @@ const secure = () => { try { return safeStorage.isEncryptionAvailable(); } catch
 
 const validVar = (n) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(String(n || ''));
 // Variables that would let an account hijack the terminal itself, not the agent.
-const FORBIDDEN = new Set(['PATH', 'PATHEXT', 'COMSPEC', 'SYSTEMROOT', 'NODE_OPTIONS', 'LD_PRELOAD', 'LD_LIBRARY_PATH', 'DYLD_INSERT_LIBRARIES', 'ORCHESTRAI_URL', 'ORCHESTRAI_TOKEN', 'ORCHESTRAI_TERMINAL', 'ORCHESTRAI_NODE']);
+const FORBIDDEN = new Set(['PATH', 'PATHEXT', 'COMSPEC', 'SYSTEMROOT', 'NODE_OPTIONS', 'LD_PRELOAD', 'LD_LIBRARY_PATH', 'DYLD_INSERT_LIBRARIES', 'ORCHESTRAI_URL', 'ORCHESTRAI_TOKEN', 'ORCHESTRAI_TERMINAL', 'ORCHESTRAI_NODE', 'ORCHESTRAI_CLI']);
 
 function publicView(a, secrets) {
   const have = secrets[a.id] || {};

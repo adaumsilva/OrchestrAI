@@ -238,6 +238,9 @@ app.whenReady().then(async () => {
   createWindow();
   remote?.start();
   if (!process.env.ORCH_NO_TRAY) tray.setup(getWin);
+  // Keep the Claude Code skill current so an agent started by hand in any terminal already knows the CLI.
+  // (Skipped under tests, which must not touch the real home directory.)
+  if (!process.env.ORCH_NO_TRAY) { const sk = require('./services/skills'); if (!sk.status().claude.upToDate) sk.install('claude'); }
 });
 app.on('window-all-closed', () => {
   for (const p of ptys.values()) p.kill();

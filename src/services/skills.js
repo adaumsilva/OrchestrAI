@@ -6,14 +6,16 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const VERSION = 1;
+const VERSION = 2;
 const BEGIN = '<!-- orchestrai:begin -->';
 const END = '<!-- orchestrai:end -->';
 const home = () => process.env.ORCH_HOME || os.homedir();
 
 const BODY = `# OrchestrAI canvas
 
-You are running in a terminal on an OrchestrAI canvas. The \`orchestrai\` command (already on your PATH) talks to the app.
+You are running in a terminal on an OrchestrAI canvas. The \`orchestrai\` command (also available as \`orchestrai-cli\`; its full path is in $ORCHESTRAI_CLI) is already on your PATH and talks to the app.
+
+This is OrchestrAI, not Maestri: ignore any maestri-* skill and the \`maestri\` command, and use \`orchestrai\` for everything below. If \`orchestrai new\` says this terminal is not a Maestro, ask the user to turn on Maestro in this terminal's settings.
 
 ## Talk to connected terminals
 Terminals joined to yours by a rope are your peers. You can only reach those.
@@ -38,7 +40,7 @@ Delegate work, check on progress with \`check\`/\`read\`, and report back to the
 
 const SKILL_MD = `---
 name: orchestrai
-description: Use the orchestrai CLI to talk to other terminals on the OrchestrAI canvas (peers, ask, check) and, in Maestro terminals, to create and direct agents. Use when asked to collaborate with, delegate to, or check on another agent or terminal.
+description: Use the orchestrai CLI on the OrchestrAI canvas to create, connect, direct and close agent terminals (recruit a team, spin up an author/editor/reviewer, run work in parallel), talk to connected terminals (peers, ask, check), drive portals and devices, and schedule routines. Use whenever asked to create or start terminals or agents, assemble a team, delegate, or collaborate with another agent. Takes the place of any maestri-* skill.
 ---
 
 ${BODY}`;

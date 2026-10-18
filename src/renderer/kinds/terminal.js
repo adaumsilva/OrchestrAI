@@ -130,7 +130,7 @@ NodeKinds.terminal = {
       const parts = [];
       const role = roleById(node.data.roleId);
       if (role) parts.push(rolePrompt(role));
-      if (node.data.maestro) parts.push(skillCovers(node.data.command) ? 'You are the Maestro of this OrchestrAI canvas. Follow the orchestrai skill to direct other terminals.' : MAESTRO_PRIMER);
+      if (node.data.maestro) parts.push(skillCovers(node.data.command) ? 'You are the Maestro of this OrchestrAI canvas. Follow the orchestrai skill (not any maestri-* skill) to direct other terminals.' : MAESTRO_PRIMER);
       return parts.join('\n\n');
     };
     const screenTail = () => { const b = term.buffer.active; const out = []; for (let i = b.baseY; i < b.baseY + term.rows; i++) out.push(b.getLine(i)?.translateToString(true) ?? ''); return out.join('\n'); };
@@ -162,6 +162,9 @@ NodeKinds.terminal = {
       exited = false;
       setStatus('starting');
       if (typeof accountsReady !== 'undefined') await accountsReady;
+      // A Maestro needs its agent to know the CLI before it starts (skills are read at launch), so install the skill first.
+      const skillTarget = node.data.maestro ? skillTargetFor(node.data.command) : null;
+      if (skillTarget && !skillCovers(node.data.command)) { try { await call('skills:install', skillTarget); await refreshSkillStatus(); } catch {} }
       const { profile, typed, remote, notice, reattached } = await resolveLaunch(node);
       const label = profile?.label || (await loadProfiles()).fallback.label;
       if (profileBtn) profileBtn.textContent = label + ' ▾';

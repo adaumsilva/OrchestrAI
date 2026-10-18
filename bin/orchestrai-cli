@@ -1,0 +1,2 @@
+#!/bin/sh
+ELECTRON_RUN_AS_NODE=1 exec "${ORCHESTRAI_NODE:-node}" "$(dirname "$0")/orchestrai.js" "$@"

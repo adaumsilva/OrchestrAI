@@ -100,7 +100,7 @@ async function resolveProfile(node) {
 
 const roleById = (id) => state.settings.roles.find((r) => r.id === id) || null;
 const rolePrompt = (role) => `You have been assigned the role "${role.name}" for this session.\n\n${role.instructions}`;
-const MAESTRO_PRIMER = `You are the Maestro of this OrchestrAI canvas: a conductor that can direct other terminals. Use the \`orchestrai\` command in your shell:
+const MAESTRO_PRIMER = `You are the Maestro of this OrchestrAI canvas: a conductor that can direct other terminals. This is OrchestrAI, not Maestri: ignore any maestri-* skill and the \`maestri\` command. Use the \`orchestrai\` command (alias \`orchestrai-cli\`) in your shell:
   orchestrai list                        - see every terminal (id, name, floor, status, role)
   orchestrai new --name N --command C [--role R] [--cwd DIR]  - start a new agent terminal connected to you
   orchestrai send <terminal> <text>      - type a message into a terminal

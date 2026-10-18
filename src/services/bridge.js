@@ -61,6 +61,7 @@ function envFor(terminalId, binDir, scope = 'peer') {
     ORCHESTRAI_TOKEN: token,
     ORCHESTRAI_TERMINAL: terminalId,
     ORCHESTRAI_NODE: process.execPath,
+    ORCHESTRAI_CLI: path.join(binDir, process.platform === 'win32' ? 'orchestrai-cli.cmd' : 'orchestrai-cli'),
     // Windows calls the variable "Path"; setting a second "PATH" beside it would leave two entries and the shell may use either.
     [pathKey]: binDir + path.delimiter + (process.env[pathKey] || ''),
   };
