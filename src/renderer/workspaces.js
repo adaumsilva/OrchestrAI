@@ -160,4 +160,4 @@ registerCommand({ id: 'switch-workspace', label: 'Switch workspace…', run: asy
   const it = await openPalette({ items: state.workspaces.map((w) => ({ key: 'ws:' + w.id, label: w.name, sub: `${w.floors.length} floors`, icon: '▤', ws: w })), placeholder: 'Switch to workspace…', noRun: true, recent: false });
   if (it) switchWorkspace(it.ws.id);
 } });
-try { setSidebar(localStorage.getItem('sidebar') === '1'); } catch {}
+try { setSidebar(localStorage.getItem('sidebar') !== '0'); } catch { setSidebar(true); } // open unless the user closed it
