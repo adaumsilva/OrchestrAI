@@ -8,6 +8,7 @@ const TERMINAL_DEFAULTS = {
   cursorStyle: 'block',
   cursorBlink: true,
   scrollback: 5000,
+  memLimitMB: 0, // per terminal; 0 = no limit. Runaway child processes are stopped, the shell is kept
   theme: 'system', // 'system' follows the light/dark pair below; also a built-in name or 'custom:<id>'
   themeLight: 'light',
   themeDark: 'dark',
@@ -45,6 +46,18 @@ function normalizeSettings() {
   state.settings.roles = Array.isArray(state.settings.roles) ? state.settings.roles : DEFAULT_ROLES.map((r) => ({ ...r }));
   state.scrollback = state.scrollback || {};
   state.settings.shortcuts = state.settings.shortcuts && typeof state.settings.shortcuts === 'object' ? state.settings.shortcuts : {};
+}
+
+// Push the memory limits (global + per-terminal override) to the main process whenever they change.
+let memLimitKey = '';
+function syncMemLimits() {
+  const global = Number(state.settings?.terminal?.memLimitMB) || 0;
+  const perId = {};
+  for (const f of state.floors) for (const n of f.nodes) if (n.kind === 'terminal' && Number(n.data?.memLimitMB) > 0) perId[n.id] = Number(n.data.memLimitMB);
+  const key = JSON.stringify([global, perId]);
+  if (key === memLimitKey) return;
+  memLimitKey = key;
+  call('pty:setMemLimits', { global, perId }).catch(() => {});
 }
 
 const terminalSettings = () => state.settings?.terminal || TERMINAL_DEFAULTS;
@@ -360,6 +373,8 @@ async function settingsDialog() {
       field('Dark theme', themeSelect('themeDark')),
       h('div', { class: 'muted' }, '“Follow system” switches between the light and dark theme above with your OS appearance.'),
       field('Scrollback (lines)', num('scrollback', 500, 100000, 500)),
+      field('Memory limit (MB)', num('memLimitMB', 0, 262144, 256)),
+      h('div', { class: 'muted' }, 'Per terminal, 0 = no limit. Past the limit the biggest child processes are stopped; the shell keeps running. A terminal can override this in its settings.'),
       field('Default profile', profileSelect),
       field('Connection style', h('select', { onchange: (e) => setRopeRouting(e.target.value) }, h('option', { value: 'cable', selected: ropeRouting() === 'cable' }, 'Hanging cables'), h('option', { value: 'circuit', selected: ropeRouting() === 'circuit' }, 'Circuit traces (right angles)'))),
       check('cursorBlink', 'Blinking cursor'),

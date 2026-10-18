@@ -174,6 +174,49 @@ ipcMain.handle('pty:killForeground', async (_e, id) => {
   try { process.kill(r.fg.pid); return true; } catch { return false; }
 });
 
+// Memory limit per terminal: when a terminal's process tree outgrows its limit, stop the biggest child
+// processes (never the shell) and say so in the terminal. Limits come from the renderer (global + per-terminal override).
+let memLimits = { global: 0, perId: {} };
+let memTimer = null, memBusy = false;
+const memGrace = new Map(); // id -> time of the last stop, so one runaway does not spam notices
+const MEM_CHECK_MS = Number(process.env.ORCH_MEM_CHECK_MS) || 3000;
+const MEM_GRACE_MS = Number(process.env.ORCH_MEM_GRACE_MS) || 8000;
+const fmtMB = (b) => (b >= 1024 ** 3 ? (b / 1024 ** 3).toFixed(1) + ' GB' : Math.round(b / 1024 ** 2) + ' MB');
+async function enforceMemoryLimits() {
+  if (memBusy) return;
+  memBusy = true;
+  try {
+    const targets = [];
+    for (const [id, p] of ptys) {
+      const mb = Number(memLimits.perId[id]) > 0 ? Number(memLimits.perId[id]) : memLimits.global;
+      if (mb > 0) targets.push({ id, pid: p.pid, limit: mb * 1024 * 1024 });
+    }
+    for (const t of targets) {
+      if (Date.now() - (memGrace.get(t.id) || 0) < MEM_GRACE_MS) continue;
+      const tr = await procstats.tree(t.pid);
+      const victims = procstats.pickVictims(tr, t.limit);
+      if (!victims.length) continue;
+      memGrace.set(t.id, Date.now());
+      for (const v of victims) await procstats.killTree(v.pid, true);
+      const used = tr.reduce((a, x) => a + x.rss, 0);
+      const names = victims.map((v) => v.name || v.pid).join(', ');
+      try {
+        win.webContents.send('pty:data', t.id, `
+[33m[OrchestrAI] Memory limit ${fmtMB(t.limit)} exceeded (${fmtMB(used)} in use). Stopped: ${names}. The shell is still running.[0m
+`);
+        win.webContents.send('pty:memlimit', t.id, { limit: t.limit, used, stopped: victims.map((v) => ({ pid: v.pid, name: v.name })) });
+      } catch {}
+    }
+  } catch {} finally { memBusy = false; }
+}
+ipcMain.handle('pty:setMemLimits', (_e, cfg) => {
+  memLimits = { global: Math.max(0, Number(cfg?.global) || 0), perId: cfg?.perId && typeof cfg.perId === 'object' ? cfg.perId : {} };
+  const any = memLimits.global > 0 || Object.values(memLimits.perId).some((v) => Number(v) > 0);
+  if (any && !memTimer) memTimer = setInterval(enforceMemoryLimits, MEM_CHECK_MS);
+  if (!any && memTimer) { clearInterval(memTimer); memTimer = null; }
+  return { active: any };
+});
+
 ipcMain.handle('workspace:load', () => {
   try { return JSON.parse(fs.readFileSync(stateFile(), 'utf8')); } catch { return null; }
 });

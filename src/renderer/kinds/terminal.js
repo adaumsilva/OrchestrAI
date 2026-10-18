@@ -230,6 +230,11 @@ NodeKinds.terminal = {
       term.write(`\r\n\x1b[2m[process exited with code ${code} — press Enter to restart]\x1b[0m\r\n`);
       if (node.data.monitor && burstBytes > 300) flagFinished();
     });
+    const offMem = api.on('pty:memlimit', (id, info) => {
+      if (id !== node.id) return;
+      el.classList.add('attention'); setStatus(status);
+      if (!document.hasFocus()) call('app:notify', { title: `${node.title}: memory limit`, body: `Stopped ${info.stopped.map((x) => x.name).join(', ')}` });
+    });
     term.onBell(() => {
       const el = nodeEl();
       if (!el) return;
@@ -327,7 +332,7 @@ NodeKinds.terminal = {
     return () => {
       prefersDark.removeEventListener('change', onScheme);
       clearInterval(launchTimer); clearTimeout(quietTimer);
-      ro.disconnect(); offData(); offExit(); chatFace.destroy();
+      ro.disconnect(); offData(); offExit(); offMem(); chatFace.destroy();
       try { state.scrollback[node.id] = serialize.serialize({ scrollback: 300 }); } catch {}
       api.ptyKill(node.id);
       // The node is being closed (not the app), so its persistent session ends with it.

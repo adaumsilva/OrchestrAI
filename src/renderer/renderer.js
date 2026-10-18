@@ -36,6 +36,7 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 let saveTimer;
 const save = () => {
   if (typeof onStateChanged === 'function') onStateChanged(); // undo history (history.js)
+  if (typeof syncMemLimits === 'function') syncMemLimits(); // memory limits live in the main process
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => call('workspace:save', state), 300);
 };

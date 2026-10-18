@@ -30,6 +30,7 @@ async function terminalDialog({ mode, floor, node }) {
     monitor: isNew ? true : !!d.monitor,
     maestro: !!d.maestro,
     persist: !!d.persist,
+    memLimitMB: d.memLimitMB || 0,
     icon: d.icon || '',
     color: d.color || '',
     theme: d.theme || '',
@@ -153,6 +154,7 @@ async function terminalDialog({ mode, floor, node }) {
       accountField(),
       toggleRow('Monitor Activity', 'Detect terminal output and notify you when work finishes.', switchEl(draft.monitor, (v) => { draft.monitor = v; })),
       persistRow(),
+      sheetField('Memory limit (MB)', h('input', { type: 'number', min: 0, step: 256, value: draft.memLimitMB || '', placeholder: 'inherit from Settings', oninput: (e) => { draft.memLimitMB = Math.max(0, Number(e.target.value) || 0); } })),
       toggleRow(h('span', {}, 'Maestro ', infoBtn), 'Promotes this terminal to a conductor that can direct the rest of the canvas.', switchEl(draft.maestro, (v) => { draft.maestro = v; })),
       maestroInfo);
   }
@@ -271,7 +273,7 @@ async function terminalDialog({ mode, floor, node }) {
       command,
       runsOn: r.kind === 'default' ? undefined : { ...r, host: r.host?.trim(), user: r.user?.trim(), container: r.container?.trim(), sandbox: r.sandbox?.trim() },
       cwd: draft.cwd.trim() === (floor.dir || '') ? '' : draft.cwd.trim(),
-      monitor: draft.monitor, maestro: draft.maestro, persist: draft.persist,
+      monitor: draft.monitor, maestro: draft.maestro, persist: draft.persist, memLimitMB: draft.memLimitMB || undefined,
       icon: draft.icon, color: draft.color, theme: draft.theme, fontFamily: draft.fontFamily, fontSize: draft.fontSize || 0, roleId: draft.roleId, accountId: draft.accountId,
     };
     closeModal();

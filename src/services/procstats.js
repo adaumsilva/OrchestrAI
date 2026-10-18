@@ -93,4 +93,57 @@ async function sample(targets) {
   return { cores, procs: result, at: Date.now() };
 }
 
-module.exports = { sample };
+// Every process under rootPid (root included) from one snapshot list, each with its depth.
+function treeOf(list, rootPid) {
+  const children = new Map();
+  for (const p of list) {
+    if (!children.has(p.ppid)) children.set(p.ppid, []);
+    children.get(p.ppid).push(p);
+  }
+  const root = list.find((p) => p.pid === rootPid);
+  if (!root) return [];
+  const out = [], seen = new Set();
+  const walk = (p, depth) => {
+    if (seen.has(p.pid)) return;
+    seen.add(p.pid);
+    out.push({ pid: p.pid, ppid: p.ppid, name: p.name, cmd: String(p.cmd || '').slice(0, 300), rss: p.rss, cpu: Math.round((p.cpuPct || 0) * 10) / 10, depth });
+    for (const c of children.get(p.pid) || []) walk(c, depth + 1);
+  };
+  walk(root, 0);
+  return out;
+}
+
+// Process tree of one terminal (for the per-terminal Processes popover).
+async function tree(rootPid) {
+  const { procs: list } = await procs();
+  return treeOf(list, rootPid);
+}
+
+// Which child processes to stop so the tree fits under limitBytes: biggest first, never the root shell or console helpers.
+function pickVictims(treeList, limitBytes) {
+  const total = treeList.reduce((a, p) => a + p.rss, 0);
+  if (!(limitBytes > 0) || total <= limitBytes) return [];
+  const root = treeList[0];
+  const victims = [];
+  let remaining = total;
+  const byPid = new Map(treeList.map((p) => [p.pid, p]));
+  const covered = (p) => { for (let q = byPid.get(p.ppid); q; q = byPid.get(q.ppid)) if (victims.includes(q)) return true; return false; };
+  for (const p of [...treeList].filter((x) => x !== root && !IGNORED.test(x.name)).sort((a, b) => b.rss - a.rss)) {
+    if (remaining <= limitBytes) break;
+    if (covered(p)) continue;
+    victims.push(p);
+    // killing a process takes its subtree with it
+    remaining -= treeOf(treeList.map((x) => ({ ...x })), p.pid).reduce((a, x) => a + x.rss, 0);
+  }
+  return victims;
+}
+
+// Stops pid and its children. Windows has no process groups here, so use taskkill /T.
+function killTree(pid, force) {
+  return new Promise((resolve) => {
+    if (WIN) execFile('taskkill.exe', ['/PID', String(pid), '/T', '/F'], { windowsHide: true }, (err) => resolve(!err));
+    else { try { process.kill(pid, force ? 'SIGKILL' : 'SIGTERM'); resolve(true); } catch { resolve(false); } }
+  });
+}
+
+module.exports = { sample, tree, treeOf, pickVictims, killTree };
