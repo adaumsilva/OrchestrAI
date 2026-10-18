@@ -565,3 +565,13 @@ body.sb-open #viewport { left: 190px; }
 .pair-box { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; padding: 10px 12px; border-radius: 10px; background: var(--accent-soft); }
 .pair-code { font-size: 28px; letter-spacing: 6px; font-weight: 700; }
 .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+
+/* Processes popover (per terminal) */
+.proc-pop { position: fixed; z-index: 60; width: 440px; max-height: 60vh; overflow: auto; padding: 8px 10px; font-size: 12px; }
+.proc-title { font-weight: 600; margin-bottom: 6px; }
+.proc-row { display: grid; grid-template-columns: 1fr 52px 54px 70px 52px; align-items: center; gap: 6px; padding: 2px 0; }
+.proc-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.proc-num { text-align: right; font-variant-numeric: tabular-nums; }
+.proc-pid { text-align: right; }
+.proc-hint { margin-top: 6px; }
+.term-head button.active, .head button.active { background: var(--accent-soft, rgba(10,132,255,.25)); }

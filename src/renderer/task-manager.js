@@ -184,3 +184,40 @@ setInterval(() => {
   const live = new Set(allFloors().flatMap((f) => f.nodes.map((n) => n.id)));
   for (const id of tmTrack.keys()) if (!live.has(id)) tmTrack.delete(id);
 }, 30000);
+
+// ---------- per-terminal Processes popover ----------
+let procPop = null;
+function closeProcesses() { procPop?.close(); }
+function processesPopover(node, anchor, onClose) {
+  closeProcesses();
+  const body = h('div', { class: 'proc-body' }, h('div', { class: 'muted' }, 'Loading…'));
+  const el = h('div', { class: 'proc-pop menu' }, h('div', { class: 'proc-title' }, `Processes in ${node.title}`), body,
+    h('div', { class: 'muted proc-hint' }, 'Stop ends one process and its children. Shift-click forces it.'));
+  document.body.append(el);
+  const r = anchor.getBoundingClientRect();
+  el.style.left = Math.max(4, Math.min(r.left, innerWidth - 460)) + 'px';
+  el.style.top = Math.min(r.bottom + 4, innerHeight - 120) + 'px';
+  let timer = null, dead = false;
+  const refresh = async () => {
+    if (dead) return;
+    let res;
+    try { res = await call('pty:processes', node.id); } catch (err) { res = { error: String(err.message || err), list: [] }; }
+    if (dead) return;
+    if (res.gone || res.error || !res.list.length) { body.replaceChildren(h('div', { class: 'muted' }, res.error || 'No live process in this terminal.')); return; }
+    body.replaceChildren(...res.list.map((p) => h('div', { class: 'proc-row', 'data-pid': p.pid },
+      h('span', { class: 'proc-name', style: `padding-left:${p.depth * 12}px`, title: p.cmd || p.name }, p.name || '?'),
+      h('span', { class: 'muted proc-pid' }, String(p.pid)),
+      h('span', { class: 'proc-num' }, `${p.cpu.toFixed(1)}%`),
+      h('span', { class: 'proc-num' }, fmtBytes(p.rss)),
+      p.depth === 0 ? h('span', { class: 'muted proc-shell', title: 'The shell itself: use Restart to end it' }, 'shell')
+        : h('button', { class: 'tm-act', title: 'Stop this process', onclick: async (e) => { const f = e.shiftKey; await call('pty:killPid', node.id, p.pid, f); setTimeout(refresh, 300); } }, 'Stop'))));
+  };
+  const close = () => { dead = true; clearInterval(timer); el.remove(); removeEventListener('mousedown', away, true); removeEventListener('keydown', esc, true); procPop = null; onClose?.(); };
+  const away = (e) => { if (!el.contains(e.target) && !anchor.contains(e.target)) close(); };
+  const esc = (e) => { if (e.key === 'Escape') close(); };
+  addEventListener('mousedown', away, true);
+  addEventListener('keydown', esc, true);
+  procPop = { close };
+  refresh();
+  timer = setInterval(refresh, 1500);
+}

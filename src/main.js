@@ -217,6 +217,20 @@ ipcMain.handle('pty:setMemLimits', (_e, cfg) => {
   return { active: any };
 });
 
+// Processes popover: the terminal's process tree, and stopping one process of it (never the shell itself).
+ipcMain.handle('pty:processes', async (_e, id) => {
+  const p = ptys.get(id);
+  if (!p) return { gone: true, list: [] };
+  try { return { root: p.pid, list: await procstats.tree(p.pid) }; } catch (err) { return { error: String(err.message || err), list: [] }; }
+});
+ipcMain.handle('pty:killPid', async (_e, id, pid, force) => {
+  const p = ptys.get(id);
+  if (!p || !Number.isInteger(pid) || pid === p.pid) return false;
+  const tr = await procstats.tree(p.pid);
+  if (!tr.some((x) => x.pid === pid)) return false; // only processes of this terminal
+  return procstats.killTree(pid, !!force);
+});
+
 ipcMain.handle('workspace:load', () => {
   try { return JSON.parse(fs.readFileSync(stateFile(), 'utf8')); } catch { return null; }
 });

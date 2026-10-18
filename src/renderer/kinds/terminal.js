@@ -258,6 +258,7 @@ NodeKinds.terminal = {
     profileBtn = addButton('Shell \u25BE', 'Terminal settings (runs on, command, role\u2026)', edit);
     profileBtn.classList.add('profile-btn');
     addButton('\u2315', 'Find (Ctrl+Shift+F)', openFind);
+    const procBtn = addButton('\u2630', 'Processes: what runs in this terminal and how much memory it uses', () => (procBtn.classList.contains('active') ? closeProcesses() : (procBtn.classList.add('active'), processesPopover(node, procBtn, () => procBtn.classList.remove('active')))));
     addButton('\u27F3', 'Restart the process', restart);
 
     // ---------- chat face (the agent's transcript as a conversation; the process keeps running underneath) ----------
@@ -292,6 +293,7 @@ NodeKinds.terminal = {
         { separator: true },
         { label: 'Find\u2026', onClick: openFind },
         { label: 'Clear', onClick: () => term.clear() },
+        { label: 'Processes…', onClick: () => processesPopover(node, procBtn, () => procBtn.classList.remove('active')) },
         { label: 'Restart', onClick: restart },
       ]);
     });
