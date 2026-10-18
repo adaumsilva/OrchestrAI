@@ -575,3 +575,9 @@ body.sb-open #viewport { left: 190px; }
 .proc-pid { text-align: right; }
 .proc-hint { margin-top: 6px; }
 .term-head button.active, .head button.active { background: var(--accent-soft, rgba(10,132,255,.25)); }
+
+/* File tree dock side and resize handle */
+.split-handle { position: relative; z-index: 2; flex: none; width: 5px; margin: 0 -3px; cursor: col-resize; border-radius: 3px; }
+.split-handle:hover { background: var(--accent-soft); }
+.split.dock-right { flex-direction: row-reverse; }
+.split.dock-right .tree { border-right: 0; padding-right: 0; border-left: 1px solid var(--border); padding-left: 4px; }

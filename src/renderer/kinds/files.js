@@ -3,7 +3,7 @@ const fileClipboard = { mode: null, paths: [] }; // shared by every file tree
 
 NodeKinds.files = {
   label: 'Files', w: 700, h: 460,
-  mount({ node, body, cwd, floor, save, addButton }) {
+  mount({ node, body, cwd, floor, save, addButton, el }) {
     const root = () => node.data.root || cwd() || '';
     const expanded = new Set(node.data.expanded || []);
     const badges = new Map(); // relative path (forward slashes) -> status letter
@@ -29,8 +29,10 @@ NodeKinds.files = {
     const saveAllBtn = h('button', { title: 'Save every modified tab', onclick: saveAll }, 'Save all');
     const mdBtn = h('button', { title: 'Toggle markdown preview', style: 'display:none', onclick: () => { mdOn = !mdOn; showActive(); } }, 'Preview');
     let mdOn = false;
+    const handle = h('div', { class: 'split-handle', title: 'Drag to resize the tree' });
     const editor = h('div', { class: 'editor' }, tabBar, h('div', { class: 'row' }, editorPath, mdBtn, saveBtn, saveAllBtn), codeBox, mediaBox, mdView);
 
+    const split = h('div', { class: 'split' }, tree, handle, editor);
     body.append(
       h('div', { class: 'row' },
         rootInput,
@@ -39,8 +41,35 @@ NodeKinds.files = {
         h('button', { title: 'New folder', onclick: () => createDialog(true) }, '+D'),
         h('button', { title: 'Refresh', onclick: refresh }, '⟳'),
         viewBtn, modeSel, search),
-      h('div', { class: 'split' }, tree, editor),
+      split,
       status);
+
+    // Dock side of the tree: with the tree on the canvas-facing far side, the editor opens toward the middle of the canvas.
+    // 'auto' follows where the node sits (right half of the window: tree on the right), 'left' / 'right' pin it.
+    const DOCKS = ['auto', 'left', 'right'];
+    const treeSide = () => {
+      const d = node.data.dock || 'auto';
+      if (d !== 'auto') return d;
+      const r = el.getBoundingClientRect();
+      return r.left + r.width / 2 > innerWidth / 2 ? 'right' : 'left';
+    };
+    const applyDock = () => {
+      split.classList.toggle('dock-right', treeSide() === 'right');
+      dockBtn.title = `Tree side: ${node.data.dock || 'auto'} (click to change; auto puts the editor toward the canvas centre)`;
+      dockBtn.textContent = { auto: '⇆', left: '⇤', right: '⇥' }[node.data.dock || 'auto'];
+    };
+    const dockBtn = addButton('⇆', '', () => { node.data.dock = DOCKS[(DOCKS.indexOf(node.data.dock || 'auto') + 1) % DOCKS.length]; save(); applyDock(); });
+    const onDrop = () => { if ((node.data.dock || 'auto') === 'auto') applyDock(); }; // the node may have been dragged to the other half
+    addEventListener('mouseup', onDrop, true);
+    setTimeout(applyDock, 0); // once the node is placed
+    if (node.data.treeW) tree.style.width = node.data.treeW + 'px';
+    handle.addEventListener('mousedown', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      const sx = e.clientX, w0 = tree.offsetWidth, sign = split.classList.contains('dock-right') ? -1 : 1, zoom = floor.view?.zoom || 1;
+      const mv = (m) => { tree.style.width = Math.round(Math.max(120, Math.min(split.offsetWidth - 160, w0 + sign * (m.clientX - sx) / zoom))) + 'px'; };
+      const up = () => { removeEventListener('mousemove', mv, true); removeEventListener('mouseup', up, true); node.data.treeW = parseInt(tree.style.width, 10) || undefined; save(); };
+      addEventListener('mousemove', mv, true); addEventListener('mouseup', up, true);
+    });
 
     const rel = (p) => p.slice(root().length).replace(/^[\\/]+/, '').replace(/\\/g, '/');
     const baseName = (p) => p.split(/[\\/]/).pop();
@@ -352,7 +381,7 @@ NodeKinds.files = {
       if (!search.value) refresh();
     });
     refresh().then(async () => { for (const p of node.data.tabs || []) await openFile(p); });
-    return () => { off(); call('files:unwatch', node.id); };
+    return () => { off(); removeEventListener('mouseup', onDrop, true); call('files:unwatch', node.id); };
   },
 };
 
