@@ -231,6 +231,10 @@ function table(rows, cols) {
 ${r.screen}`);
         break;
       }
+      case 'turn-end': { // called by the agent's Stop hook; must never fail or print
+        if (process.env.ORCHESTRAI_URL && process.env.ORCHESTRAI_TOKEN) await rpc('turn-end', {}).catch(() => {});
+        break;
+      }
       case 'roles': {
         const roles = await rpc('roles', {});
         console.log(flags.json ? JSON.stringify(roles, null, 2) : table(roles, ['name', 'summary']));

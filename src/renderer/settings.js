@@ -182,10 +182,10 @@ const AGENT_RESUME = {
 };
 async function withAgentSession(node, command) {
   if (!terminalSettings().restoreScrollback) return command;
-  const m = command.match(/^(claude|codex|agy|opencode)(?:.cmd|.exe)?(s.*)?$/i);
+  const m = command.match(/^(claude|codex|agy|opencode)(?:\.cmd|\.exe)?(\s.*)?$/i);
   if (!m) return command;
   const tool = m[1].toLowerCase(), rest = m[2] || '';
-  if (/(^|s)(-p|--print|-c|--continue|-r|--resume|--session-id|--session|--conversation)(s|=|$)/.test(rest)) return command;
+  if (/(^|\s)(-p|--print|-c|--continue|-r|--resume|--session-id|--session|--conversation)(\s|=|$)/.test(rest)) return command;
   const d = node.data;
   if (tool === 'claude') {
     if (d.agentSession && await call('app:agentSessionExists', d.agentSession).catch(() => false)) return `claude --resume ${d.agentSession}${rest}`;
@@ -198,13 +198,22 @@ async function withAgentSession(node, command) {
   return command;
 }
 
+// Claude Code reports the end of each turn through a Stop hook (see app:hookSettings in main.js), which lets the canvas
+// know exactly when an agent is done instead of guessing from silence. Interactive launches only.
+async function withTurnHook(command) {
+  if (!/^claude(?:\.cmd|\.exe)?(\s.*)?$/i.test(command) || /(^|\s)(-p|--print|--settings)(\s|=|$)/.test(command)) return command;
+  const file = await call('app:hookSettings').catch(() => '');
+  if (!file) return command;
+  return command.replace(/^(claude(?:\.cmd|\.exe)?)/i, `$1 --settings "${file}"`);
+}
+
 // Turns a terminal node's "Runs on" choice into a concrete launch: the profile to spawn, and the text to type
 // into the shell once it is ready (the Command field). Remote kinds (ssh, docker) carry the command in their args.
 async function resolveLaunch(node) {
   const d = node.data;
   const runs = d.runsOn || { kind: d.profile ? 'legacy' : 'default' };
   let command = (d.command || '').trim();
-  if (['default', 'local', 'legacy'].includes(runs.kind)) command = await withAgentSession(node, command);
+  if (['default', 'local', 'legacy'].includes(runs.kind)) command = await withTurnHook(await withAgentSession(node, command));
   const cwdOverride = (d.cwd || '').trim();
   const { detected, fallback } = await loadProfiles();
   switch (runs.kind) {

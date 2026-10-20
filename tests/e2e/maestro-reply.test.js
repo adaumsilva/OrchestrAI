@@ -24,4 +24,14 @@ module.exports = async (t) => {
   }
   t.check('Maestro is told the worker finished, with its output', /"Worker" finished the task/.test(seen) && seen.includes('4242'), seen.slice(-400));
   t.check('the watch is cleared afterwards', await t.js(`!replyWatch.has('${w}')`));
+
+  // Stop hook: Claude launches get --settings pointing at a file that calls `orchestrai-cli turn-end`.
+  const cmd = await t.js(`withTurnHook('claude --model x')`);
+  t.check('claude launch gets the turn hook', /^claude --settings ".+claude-turn-hook\.json" --model x$/.test(cmd), cmd);
+  t.check('other commands and -p runs are untouched', await t.js(`(async () => (await withTurnHook('codex')) === 'codex' && (await withTurnHook('claude -p hi')) === 'claude -p hi')()`));
+  const file = cmd.match(/"(.+)"/)[1];
+  t.check('hook file runs orchestrai-cli turn-end on Stop', /orchestrai-cli turn-end/.test(require('fs').readFileSync(file, 'utf8')));
+  const peerEnv = bridge.envFor(w, 'x', 'peer');
+  const te = await rpc(peerEnv, 'turn-end', {});
+  t.check('turn-end is accepted from a plain terminal', te.ok, te);
 };

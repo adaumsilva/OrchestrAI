@@ -260,6 +260,15 @@ ipcMain.handle('app:runHook', (_e, { cwd, command }) => new Promise((resolve) =>
   });
 }));
 // True when Claude Code has a saved conversation with this id (so `claude --resume <id>` will work).
+// Claude Code settings that report the end of every turn to the canvas (read with `claude --settings <file>`, merged
+// with the user's own). The hook runs inside the terminal, so it inherits ORCHESTRAI_URL / _TOKEN and `orchestrai-cli`.
+ipcMain.handle('app:hookSettings', () => {
+  const file = path.join(app.getPath('userData'), 'hooks', 'claude-turn-hook.json');
+  const settings = { hooks: { Stop: [{ hooks: [{ type: 'command', command: 'orchestrai-cli turn-end' }] }] } };
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify(settings));
+  return file;
+});
 ipcMain.handle('app:agentSessionExists', (_e, id) => {
   if (!/^[0-9a-f-]{36}$/i.test(String(id))) return false;
   try {

@@ -25,7 +25,7 @@ function findTerminal(ref) {
 const roleSummary = (r) => r.instructions.replace(/\s+/g, ' ').slice(0, 80);
 
 // ---------- peer messaging (rope = permission) ----------
-const PEER_METHODS = ['device-list', 'device-info', 'device-shot', 'device-tap', 'device-swipe', 'device-type', 'device-key', 'device-ui', 'device-launch', 'peers', 'ask', 'check', 'floor-status', 'portal-list', 'portal-nav', 'portal-text', 'portal-click', 'portal-type', 'portal-press', 'portal-wait', 'portal-shot'];
+const PEER_METHODS = ['device-list', 'device-info', 'device-shot', 'device-tap', 'device-swipe', 'device-type', 'device-key', 'device-ui', 'device-launch', 'peers', 'ask', 'check', 'turn-end', 'floor-status', 'portal-list', 'portal-nav', 'portal-text', 'portal-click', 'portal-type', 'portal-press', 'portal-wait', 'portal-shot'];
 
 // Portals a terminal may drive: those joined to it by a rope (a Maestro may drive any).
 function portalsFor(caller, scope) {
@@ -173,6 +173,7 @@ function deliverPrompt(t, text, { waitIdle = false, maxWaitMs = 600000 } = {}) {
 // event) watches every pending job so a missed quiet event cannot strand it; it also nudges an agent that never started
 // and reports one that exited.
 const replyWatch = new Map(); // target node id -> { maestroId, text, before, started, nudges, lastNudge }
+const turnEnded = new Map(); // terminal id -> time of its last Stop hook (the agent says it is done)
 const reportQueue = new Map(); // maestro node id -> [message]
 const flushing = new Set();
 let watchTimer = null;
@@ -225,7 +226,9 @@ function pollWatches() {
     const quiet = now - (api.lastOutput?.() || 0);
     const screen = api.readScreen?.() || '';
     const answered = newScreenText(w.before, screen).length > w.text.length + 40;
-    if (answered && status === 'idle' && quiet >= 4500) {
+    // The agent's own Stop hook beats guessing from silence; the quiet rule stays as the fallback for other agents.
+    const stopped = (turnEnded.get(id) || 0) > w.started;
+    if (answered && ((stopped && quiet >= 1500) || (status === 'idle' && quiet >= 4500))) {
       replyWatch.delete(id);
       report(w, `"${title}" finished the task you sent it. Its latest output:\n${tailOf(screen)}`);
     } else if (!answered && status !== 'running' && quiet >= 20000 && now - w.lastNudge >= 20000) {
@@ -328,6 +331,9 @@ async function bridgeHandle(method, p, from, scope) {
         if (r.error) throw new Error(r.error);
         return { path: r.path, width: r.width, height: r.height };
       }
+      case 'turn-end':
+        turnEnded.set(caller.node.id, Date.now());
+        return { ok: true };
       case 'floor-status':
         setFloorStatus(caller.floor, p.text, p.state);
         return { floor: caller.floor.name, status: caller.floor.status };
