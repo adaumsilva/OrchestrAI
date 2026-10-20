@@ -84,8 +84,11 @@ module.exports = async (t) => {
   const ui = await t.js(`document.querySelector('#modal-root').innerText`);
   t.check('accounts dialog lists both accounts with key status and the default', /Work/.test(ui) && /Personal/.test(ui) && /key stored in the keychain/.test(ui) && /default/.test(ui), ui);
   await t.js(`closeModal(); terminalDialog({ mode: 'new', floor: activeFloor() }); 0`);
-  await t.sleep(500);
-  const opts = await t.js(`[...document.querySelectorAll('#modal-root select option')].map((o) => o.textContent)`);
+  let opts = [];
+  for (let i = 0; i < 40 && !opts.some((o) => /Work/.test(o)); i++) { // slow CI: the sheet fills in after the accounts load
+    await t.sleep(250);
+    opts = await t.js(`[...document.querySelectorAll('#modal-root select option')].map((o) => o.textContent)`);
+  }
   t.check('the terminal sheet offers an account picker', opts.some((o) => /Work/.test(o)) && opts.some((o) => /None \(my environment\)/.test(o)), opts);
   await t.js(`closeModal(); 0`);
 

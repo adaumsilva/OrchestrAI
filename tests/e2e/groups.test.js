@@ -19,7 +19,10 @@ module.exports = async (t) => {
     const before = { ax: a.x, cx: c.x };
     const head = rt.get(f.id).live.get(gn.id).el.querySelector('.node-head');
     const r = head.getBoundingClientRect();
-    return { before, x: Math.round(r.left + 60), y: Math.round(r.top + r.height / 2) };
+    // The workspace sidebar is open by default and covers the left edge on a small window: grab the header to its right.
+    const sb = document.getElementById('sidebar');
+    const minX = sb && !sb.classList.contains('hidden') ? sb.getBoundingClientRect().right + 24 : 0;
+    return { before, x: Math.round(Math.max(r.left + 60, minX)), y: Math.round(r.top + r.height / 2) };
   })()`);
   await t.win.webContents.sendInputEvent({ type: 'mouseMove', x: moved.x, y: moved.y });
   await t.win.webContents.sendInputEvent({ type: 'mouseDown', x: moved.x, y: moved.y, button: 'left', clickCount: 1 });
