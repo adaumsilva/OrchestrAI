@@ -120,9 +120,10 @@ async function askPeer(caller, target, text, { timeoutMs = 120000, quietMs = 300
   const before = read();
   const flash = () => flashRope(caller.floor, caller.node.id, target.node.id);
   flash();
-  await target.entry.api.send(text);
   const start = Date.now();
-  let last = read(), lastChange = Date.now(), changed = false;
+  await deliverPrompt(target, text);
+  // Delivery itself waits for the terminal to react, so the answer may already be on screen: compare against `before`.
+  let last = before, lastChange = Math.max(start, target.entry.api.lastOutput?.() || 0), changed = false;
   for (;;) {
     await new Promise((r) => setTimeout(r, 200));
     flash();
@@ -135,34 +136,107 @@ async function askPeer(caller, target, text, { timeoutMs = 120000, quietMs = 300
   }
 }
 
-// ---------- replies to a Maestro ----------
-// A terminal given work by `orchestrai send` reports back: when it goes quiet after answering, a short message with its
-// latest output is typed into the Maestro so it can carry on. (`send --no-reply` opts out.)
-const replyWatch = new Map(); // target node id -> { maestroId, text, before }
+// ---------- reliable prompt delivery ----------
+// Typing into an agent TUI is racy: Enter sent right after a paste is swallowed as part of it, and an agent that is
+// mid-turn may ignore it. One queue per terminal keeps messages from interleaving; after Enter we expect the terminal to
+// react, and press Enter again (up to 3 more times) if it stayed silent.
+const bridgeSleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const deliveryLines = new Map(); // terminal id -> tail of its delivery queue
 
-function watchReply(caller, target, text) {
-  replyWatch.set(target.node.id, { maestroId: caller.node.id, text, before: target.entry.api.readScreen?.() || '' });
-  target.entry.api.expectReply?.();
+function deliverPrompt(t, text, { waitIdle = false, maxWaitMs = 600000 } = {}) {
+  const id = t.node.id;
+  const run = (deliveryLines.get(id) || Promise.resolve()).then(async () => {
+    const api = t.entry?.api;
+    if (!api) throw new Error('That terminal is not running.');
+    if (waitIdle) {
+      const began = Date.now();
+      while (Date.now() - began < maxWaitMs && (api.status?.() === 'running' || Date.now() - (api.lastOutput?.() || 0) < 1500)) await bridgeSleep(500);
+    }
+    const multi = /[\r\n]/.test(text);
+    await call('pty:send', id, multi ? `\x1b[200~${text}\x1b[201~` : text);
+    await bridgeSleep(multi ? 400 : 150);
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const mark = Date.now();
+      await call('pty:send', id, '\r');
+      await bridgeSleep(2000);
+      if ((api.lastOutput?.() || 0) >= mark) return true;
+    }
+    return false;
+  });
+  deliveryLines.set(id, run.catch(() => {}));
+  return run;
 }
 
-addEventListener('terminal-quiet', async (e) => {
-  const id = e.detail.id;
-  const w = replyWatch.get(id);
-  if (!w) return;
-  const target = allTerminals().find((t) => t.node.id === id);
-  const maestro = allTerminals().find((t) => t.node.id === w.maestroId);
-  if (!target?.entry || !maestro?.entry) { replyWatch.delete(id); return; }
-  const screen = target.entry.api.readScreen?.() || '';
-  // Only our own echo so far: the agent has not started answering, keep waiting.
-  if (newScreenText(w.before, screen).length <= w.text.length + 40) { target.entry.api.expectReply?.(); return; }
-  replyWatch.delete(id);
-  const tail = screen.split('\n').filter((l) => l.trim()).slice(-25).join('\n');
-  const msg = `[OrchestrAI] "${target.node.title}" finished the task you sent it. Its latest output:\n${tail}\n\nRead the result (orchestrai read "${target.node.title}" --lines 200 for more) and continue the plan.`;
-  // Do not type over a Maestro that is still working; wait for it to go idle (up to 2 minutes).
-  for (let i = 0; i < 120 && maestro.entry.api.status?.() === 'running'; i++) await new Promise((r) => setTimeout(r, 1000));
-  flashRope(maestro.floor, maestro.node.id, target.node.id);
-  maestro.entry.api.send(`\x1b[200~${msg}\x1b[201~`);
-});
+// ---------- replies to a Maestro ----------
+// A terminal given work by `orchestrai send` reports back: when it goes quiet after answering, a short message with its
+// latest output is typed into the Maestro so it can carry on. (`send --no-reply` opts out.) A poller (not a one-shot
+// event) watches every pending job so a missed quiet event cannot strand it; it also nudges an agent that never started
+// and reports one that exited.
+const replyWatch = new Map(); // target node id -> { maestroId, text, before, started, nudges, lastNudge }
+const reportQueue = new Map(); // maestro node id -> [message]
+const flushing = new Set();
+let watchTimer = null;
+
+function watchReply(caller, target, text) {
+  const now = Date.now();
+  replyWatch.set(target.node.id, { maestroId: caller.node.id, text, before: target.entry.api.readScreen?.() || '', started: now, nudges: 0, lastNudge: now });
+  if (!watchTimer) watchTimer = setInterval(pollWatches, 1500);
+}
+
+const tailOf = (screen) => screen.split('\n').filter((l) => l.trim()).slice(-25).join('\n');
+
+async function flushReports(maestroId) {
+  if (flushing.has(maestroId)) return;
+  flushing.add(maestroId);
+  try {
+    while (reportQueue.get(maestroId)?.length) {
+      const maestro = allTerminals().find((t) => t.node.id === maestroId);
+      if (!maestro?.entry) { reportQueue.delete(maestroId); return; }
+      const batch = reportQueue.get(maestroId).splice(0);
+      const msg = `[OrchestrAI] ${batch.join('\n\n')}\n\nRead the results (orchestrai read "<name>" --lines 200 for more) and continue the plan.`;
+      await deliverPrompt(maestro, msg, { waitIdle: true }).catch(() => {});
+    }
+  } finally { flushing.delete(maestroId); }
+}
+
+function report(w, text) {
+  if (!reportQueue.has(w.maestroId)) reportQueue.set(w.maestroId, []);
+  reportQueue.get(w.maestroId).push(text);
+  flushReports(w.maestroId);
+}
+
+function pollWatches() {
+  if (!replyWatch.size) { clearInterval(watchTimer); watchTimer = null; return; }
+  const terms = allTerminals();
+  for (const [id, w] of [...replyWatch]) {
+    const target = terms.find((t) => t.node.id === id);
+    const maestro = terms.find((t) => t.node.id === w.maestroId);
+    if (!maestro?.entry) { replyWatch.delete(id); continue; }
+    if (!target) { replyWatch.delete(id); report(w, 'A terminal you sent work to was closed before it reported back.'); continue; }
+    const title = target.node.title;
+    const api = target.entry?.api;
+    const status = api?.status?.();
+    if (!api || status === 'exited' || status === 'error') {
+      replyWatch.delete(id);
+      report(w, `"${title}" exited before finishing the task you sent it. Its last output:\n${tailOf(api?.readScreen?.() || '')}`);
+      continue;
+    }
+    const now = Date.now();
+    const quiet = now - (api.lastOutput?.() || 0);
+    const screen = api.readScreen?.() || '';
+    const answered = newScreenText(w.before, screen).length > w.text.length + 40;
+    if (answered && status === 'idle' && quiet >= 4500) {
+      replyWatch.delete(id);
+      report(w, `"${title}" finished the task you sent it. Its latest output:\n${tailOf(screen)}`);
+    } else if (!answered && status !== 'running' && quiet >= 20000 && now - w.lastNudge >= 20000) {
+      // Still only our own echo: the message may be sitting unsubmitted in the input. Press Enter, then give up.
+      if (w.nudges >= 2) {
+        replyWatch.delete(id);
+        report(w, `"${title}" did not respond to the task you sent it (it looks idle with the message unanswered). Check it with orchestrai read "${title}" and resend if needed.`);
+      } else { w.nudges++; w.lastNudge = now; call('pty:send', id, '\r'); }
+    }
+  }
+}
 
 // What a paired phone may do (see services/remote.js): list terminals, read a screen, type, press a key, clear the alert.
 const REMOTE_KEYS = { enter: '\r', esc: '\x1b', 'ctrl-c': '\x03', up: '\x1b[A', down: '\x1b[B', right: '\x1b[C', left: '\x1b[D', tab: '\t' };
@@ -325,7 +399,7 @@ async function bridgeHandle(method, p, from, scope) {
       if (t.floor.id === caller.floor.id) flashRope(caller.floor, caller.node.id, t.node.id);
       if (t.node.id !== caller.node.id && p.enter !== false && p.reply !== false) watchReply(caller, t, String(p.text));
       if (p.enter === false) await call('pty:send', t.node.id, String(p.text));
-      else await t.entry.api.send(String(p.text));
+      else if (!(await deliverPrompt(t, String(p.text)))) return { ok: true, warning: 'The terminal showed no reaction after Enter; check it with "orchestrai read".' };
       return { ok: true };
     }
     case 'read': {
