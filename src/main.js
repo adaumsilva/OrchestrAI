@@ -259,7 +259,15 @@ ipcMain.handle('app:runHook', (_e, { cwd, command }) => new Promise((resolve) =>
     resolve({ code: err ? (typeof err.code === 'number' ? err.code : 1) : 0, timedOut: !!(err && err.killed), output: String(stdout + stderr).slice(-20000) });
   });
 }));
-ipcMain.handle('app:worktreeRoot', () => path.join(app.getPath('userData'), 'worktrees'));
+// True when Claude Code has a saved conversation with this id (so `claude --resume <id>` will work).
+ipcMain.handle('app:agentSessionExists', (_e, id) => {
+  if (!/^[0-9a-f-]{36}$/i.test(String(id))) return false;
+  try {
+    const root = path.join(require('os').homedir(),'.claude', 'projects');
+    return fs.readdirSync(root).some((d) => fs.existsSync(path.join(root, d, `${id}.jsonl`)));
+  } catch { return false; }
+});
+ipcMain.handle('app:worktreeRoot',() => path.join(app.getPath('userData'), 'worktrees'));
 
 git.register(ipcMain);
 files.register(ipcMain, getWin);

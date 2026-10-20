@@ -198,7 +198,8 @@ NodeKinds.terminal = {
       lastChunk = 0;
       stopLaunch();
       // A reattached session already has its agent running; do not type the command or role again.
-      const prime = !reattached && (node.data.command || '').trim() ? priming() : '';
+      // A resumed agent conversation already has its role/briefing, so do not send it again.
+      const prime = !reattached && !/ (--resume|--continue|resume --last)( |$)/.test(typed || '') && (node.data.command || '').trim() ? priming() : '';
       launch = (typed || prime) ? { stage: typed ? 'shell' : 'agent', typed, prime, started: Date.now(), typedAt: Date.now() } : null;
       if (launch) launchTimer = setInterval(launchTick, 300);
     }

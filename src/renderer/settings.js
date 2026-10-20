@@ -170,12 +170,40 @@ async function persistLaunch(node, launch, cwdOverride) {
   return { ...launch, ...reattach, typed: st.exists ? '' : launch.typed, profile: { id: `tmux:${p?.id || 'default'}`, label: p?.label || 'Shell', group: 'tmux', command: 'tmux', args: tmuxAttachArgs(t, shell) } };
 }
 
+// Lets an agent terminal come back with its conversation after the app restarts. Claude gets a stable session id
+// (first launch creates it, later launches resume it). Codex, Antigravity and OpenCode cannot be given an id up
+// front, so after the first launch they resume the most recent conversation of the working directory.
+// Only plain launches are rewritten: commands that already pick a subcommand, a prompt or a resume flag are left alone.
+const AGENT_RESUME = {
+  codex: (rest) => `codex resume --last${rest}`,
+  agy: (rest) => `agy --continue${rest}`,
+  opencode: (rest) => `opencode --continue${rest}`,
+};
+async function withAgentSession(node, command) {
+  if (!terminalSettings().restoreScrollback) return command;
+  const m = command.match(/^(claude|codex|agy|opencode)(?:.cmd|.exe)?(s.*)?$/i);
+  if (!m) return command;
+  const tool = m[1].toLowerCase(), rest = m[2] || '';
+  if (/(^|s)(-p|--print|-c|--continue|-r|--resume|--session-id|--session|--conversation)(s|=|$)/.test(rest)) return command;
+  const d = node.data;
+  if (tool === 'claude') {
+    if (d.agentSession && await call('app:agentSessionExists', d.agentSession).catch(() => false)) return `claude --resume ${d.agentSession}${rest}`;
+    d.agentSession = crypto.randomUUID();
+    return `claude --session-id ${d.agentSession}${rest}`;
+  }
+  if (rest.trim() && !rest.trim().startsWith('-')) return command; // a subcommand or an initial prompt
+  if (d.agentLaunched) return AGENT_RESUME[tool](rest);
+  d.agentLaunched = true;
+  return command;
+}
+
 // Turns a terminal node's "Runs on" choice into a concrete launch: the profile to spawn, and the text to type
 // into the shell once it is ready (the Command field). Remote kinds (ssh, docker) carry the command in their args.
 async function resolveLaunch(node) {
   const d = node.data;
   const runs = d.runsOn || { kind: d.profile ? 'legacy' : 'default' };
-  const command = (d.command || '').trim();
+  let command = (d.command || '').trim();
+  if (['default', 'local', 'legacy'].includes(runs.kind)) command = await withAgentSession(node, command);
   const cwdOverride = (d.cwd || '').trim();
   const { detected, fallback } = await loadProfiles();
   switch (runs.kind) {
