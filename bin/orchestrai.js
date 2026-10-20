@@ -9,8 +9,9 @@ Usage:
   orchestrai list                               List terminals (id, name, floor, status, role)
   orchestrai new [--name N] [--command C] [--cwd DIR] [--role R] [--floor F]
                                                 Create a terminal next to this one, connected to it. Prints its id.
-  orchestrai send <terminal> <text...> [--no-enter]
-                                                Type text into a terminal (and press Enter)
+  orchestrai send <terminal> <text...> [--no-enter] [--no-reply]
+                                                Type text into a terminal (and press Enter). When it finishes and goes
+                                                quiet, its latest output is typed back into you (--no-reply: don't)
   orchestrai read <terminal> [--lines N]        Print the last N lines (default 60) of a terminal's screen
   orchestrai close <terminal>                   Close a terminal
   orchestrai roles                              List the available roles
@@ -25,6 +26,8 @@ Terminals joined to this one by a rope (any terminal, Maestro or not):
   orchestrai check <peer> [--lines N]           Show a peer's status and latest output without sending anything
 
 Browser portals joined to this terminal by a rope (a Maestro can use any portal; <portal> may be omitted when only one is connected):
+  orchestrai portal open [url] [--name N] [--floor F]   (Maestro) Create a portal connected to this terminal; prints its id
+  orchestrai portal close <portal>              (Maestro) Close a portal
   orchestrai portal list                        List the portals (id, name, url)
   orchestrai portal nav <portal> <url>          Navigate (use "-" for <portal> when there is only one)
   orchestrai portal text <portal> [--max N]     Print the page's visible text
@@ -59,7 +62,7 @@ function parse(argv) {
     const a = argv[i];
     if (a.startsWith('--')) {
       const key = a.slice(2);
-      if (['json', 'no-enter', 'submit', 'clear'].includes(key)) flags[key] = true;
+      if (['json', 'no-enter', 'no-reply', 'submit', 'clear'].includes(key)) flags[key] = true;
       else flags[key] = argv[++i];
     } else positional.push(a);
   }
@@ -126,7 +129,7 @@ function table(rows, cols) {
       }
       case 'send': {
         if (rest.length < 2) throw new Error('Usage: orchestrai send <terminal> <text...>');
-        await rpc('send', { target: rest[0], text: rest.slice(1).join(' '), enter: !flags['no-enter'] });
+        await rpc('send', { target: rest[0], text: rest.slice(1).join(' '), enter: !flags['no-enter'], reply: !flags['no-reply'] });
         break;
       }
       case 'read': {
@@ -187,7 +190,12 @@ function table(rows, cols) {
       case 'portal': {
         const [sub, ref0, ...args] = rest;
         const target = ref0 === '-' ? '' : ref0;
-        if (sub === 'list') {
+        if (sub === 'open') {
+          console.log((await rpc('portal-open', { url: ref0 || '', name: flags.name, floor: flags.floor })).id);
+        } else if (sub === 'close') {
+          if (!ref0) throw new Error('Usage: orchestrai portal close <portal>');
+          await rpc('portal-close', { target: ref0 });
+        } else if (sub === 'list') {
           const list = await rpc('portal-list', {});
           console.log(flags.json ? JSON.stringify(list, null, 2) : table(list, ['id', 'name', 'url']));
         } else if (sub === 'nav') {

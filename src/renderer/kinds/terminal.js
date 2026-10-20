@@ -6,6 +6,8 @@ NodeKinds.terminal = {
     const eff = () => ({ fontFamily: node.data.fontFamily || S().fontFamily, fontSize: node.data.fontSize || S().fontSize, theme: terminalTheme(node.data.theme || S().theme) });
     const term = new Terminal({
       allowProposedApi: true,
+      // ConPTY repaints on its own after a resize; telling xterm avoids double reflow that garbles full-screen TUIs.
+      ...(/Windows/i.test(navigator.userAgent) ? { windowsPty: { backend: 'conpty', buildNumber: 22621 } } : {}),
       fontFamily: eff().fontFamily, fontSize: eff().fontSize, lineHeight: S().lineHeight,
       cursorStyle: S().cursorStyle, cursorBlink: S().cursorBlink, scrollback: S().scrollback,
       theme: eff().theme,
@@ -98,6 +100,7 @@ NodeKinds.terminal = {
       dispatchEvent(new Event('terminal-status'));
     };
     let burstStart = 0, burstBytes = 0, lastChunk = 0, quietTimer = null;
+    let awaitReply = false; // a Maestro sent this terminal work and wants to hear when it goes quiet (see bridge.js)
     const clearAttention = () => { el.classList.remove('attention'); setStatus(status); };
     const flagFinished = () => {
       const visible = document.hasFocus() && floor.id === state.active && el.classList.contains('selected');
@@ -115,6 +118,7 @@ NodeKinds.terminal = {
       clearTimeout(quietTimer);
       quietTimer = setTimeout(() => {
         if (!exited) setStatus('idle');
+        if (awaitReply) { awaitReply = false; dispatchEvent(new CustomEvent('terminal-quiet', { detail: { id: node.id } })); }
         // "Finished" = a real burst of output (not just a prompt echo) followed by quiet.
         if (node.data.monitor && burstBytes > 300 && lastChunk - burstStart > 2500) flagFinished();
         burstBytes = 0;
@@ -247,9 +251,15 @@ NodeKinds.terminal = {
     body.append(findBar);
     fit.fit();
     start();
+    let roTimer = 0;
     const ro = new ResizeObserver(() => {
       if (!body.offsetWidth) return; // hidden floor
-      try { fit.fit(); api.ptyResize(node.id, term.cols, term.rows); } catch {}
+      // Debounced: a TUI repainting through a burst of resizes (drag, layout) is what leaves stale fragments on screen.
+      clearTimeout(roTimer);
+      roTimer = setTimeout(() => {
+        if (!body.offsetWidth) return;
+        try { fit.fit(); api.ptyResize(node.id, term.cols, term.rows); term.refresh(0, term.rows - 1); } catch {}
+      }, 60);
     });
     ro.observe(body);
 
@@ -322,6 +332,7 @@ NodeKinds.terminal = {
     entry.api.lastOutput = () => lastChunk;
     entry.api.interrupt = () => call('pty:send', node.id, String.fromCharCode(3));
     entry.api.clearAttention = clearAttention;
+    entry.api.expectReply = () => { awaitReply = true; };
     entry.api.applyAppearance = applyAppearance;
     entry.api.applySettings = () => {
       const s = S();

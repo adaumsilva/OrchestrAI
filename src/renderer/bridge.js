@@ -135,6 +135,35 @@ async function askPeer(caller, target, text, { timeoutMs = 120000, quietMs = 300
   }
 }
 
+// ---------- replies to a Maestro ----------
+// A terminal given work by `orchestrai send` reports back: when it goes quiet after answering, a short message with its
+// latest output is typed into the Maestro so it can carry on. (`send --no-reply` opts out.)
+const replyWatch = new Map(); // target node id -> { maestroId, text, before }
+
+function watchReply(caller, target, text) {
+  replyWatch.set(target.node.id, { maestroId: caller.node.id, text, before: target.entry.api.readScreen?.() || '' });
+  target.entry.api.expectReply?.();
+}
+
+addEventListener('terminal-quiet', async (e) => {
+  const id = e.detail.id;
+  const w = replyWatch.get(id);
+  if (!w) return;
+  const target = allTerminals().find((t) => t.node.id === id);
+  const maestro = allTerminals().find((t) => t.node.id === w.maestroId);
+  if (!target?.entry || !maestro?.entry) { replyWatch.delete(id); return; }
+  const screen = target.entry.api.readScreen?.() || '';
+  // Only our own echo so far: the agent has not started answering, keep waiting.
+  if (newScreenText(w.before, screen).length <= w.text.length + 40) { target.entry.api.expectReply?.(); return; }
+  replyWatch.delete(id);
+  const tail = screen.split('\n').filter((l) => l.trim()).slice(-25).join('\n');
+  const msg = `[OrchestrAI] "${target.node.title}" finished the task you sent it. Its latest output:\n${tail}\n\nRead the result (orchestrai read "${target.node.title}" --lines 200 for more) and continue the plan.`;
+  // Do not type over a Maestro that is still working; wait for it to go idle (up to 2 minutes).
+  for (let i = 0; i < 120 && maestro.entry.api.status?.() === 'running'; i++) await new Promise((r) => setTimeout(r, 1000));
+  flashRope(maestro.floor, maestro.node.id, target.node.id);
+  maestro.entry.api.send(`\x1b[200~${msg}\x1b[201~`);
+});
+
 // What a paired phone may do (see services/remote.js): list terminals, read a screen, type, press a key, clear the alert.
 const REMOTE_KEYS = { enter: '\r', esc: '\x1b', 'ctrl-c': '\x03', up: '\x1b[A', down: '\x1b[B', right: '\x1b[C', left: '\x1b[D', tab: '\t' };
 async function remoteHandle(method, p) {
@@ -269,10 +298,32 @@ async function bridgeHandle(method, p, from, scope) {
       if (sameFloor) { floor.ropes.push({ id: uid(), a: caller.node.id, b: node.id }); save(); wakeRopes(); }
       return { id: node.id };
     }
+    case 'portal-open': {
+      const floor = p.floor ? state.floors.find((f) => f.name.toLowerCase() === String(p.floor).toLowerCase() || f.id === p.floor) : caller.floor;
+      if (!floor) throw new Error(`No floor "${p.floor}".`);
+      const url = String(p.url || '').trim();
+      const sameFloor = floor.id === caller.floor.id;
+      const children = sameFloor ? caller.floor.ropes.filter((r) => r.a === caller.node.id).length : floor.nodes.length;
+      const node = addNode('portal', {
+        title: String(p.name || '').trim() || 'Portal',
+        x: sameFloor ? caller.node.x + caller.node.w + 60 : 80 + children * 40,
+        y: sameFloor ? caller.node.y + children * 370 : 80 + children * 40,
+        data: url ? { url: /^[a-z][a-z0-9+.-]*:/i.test(url) ? url : 'https://' + url } : {},
+      }, floor);
+      if (sameFloor) { floor.ropes.push({ id: uid(), a: caller.node.id, b: node.id }); save(); wakeRopes(); }
+      return { id: node.id };
+    }
+    case 'portal-close': {
+      const hit = portalsFor(caller, 'maestro').find((x) => x.node.id === p.target || x.node.title.toLowerCase() === String(p.target || '').toLowerCase());
+      if (!hit) throw new Error(`No portal "${p.target}". Run "orchestrai portal list".`);
+      removeNode(hit.floor, hit.node.id);
+      return { ok: true };
+    }
     case 'send': {
       const t = findTerminal(p.target);
       if (!t.entry) throw new Error('That terminal is not running.');
       if (t.floor.id === caller.floor.id) flashRope(caller.floor, caller.node.id, t.node.id);
+      if (t.node.id !== caller.node.id && p.enter !== false && p.reply !== false) watchReply(caller, t, String(p.text));
       if (p.enter === false) await call('pty:send', t.node.id, String(p.text));
       else await t.entry.api.send(String(p.text));
       return { ok: true };

@@ -3,7 +3,7 @@
 
 const TM_INTERVAL = 2000;
 const TM_HISTORY = 30; // samples kept for the sparklines
-const TM_HOT_CPU = 80; // percent of one core
+const TM_HOT_CPU_CORE = 80; // percent of one core (stats are percent of the whole machine)
 const TM_HOT_MEM = 1024 ** 3;
 const TM_QUIET_MS = 5 * 60 * 1000;
 
@@ -100,7 +100,7 @@ function taskRows() {
         up: alive && st.startedAt ? now - st.startedAt : -1, since: now - t.since,
         busy: t.busyMs + (t.busyFrom ? now - t.busyFrom : 0),
         stuck: alive && ownTask && status !== 'exited' && lastOut && now - lastOut > TM_QUIET_MS,
-        hot: alive && (st.cpu >= TM_HOT_CPU || st.mem >= TM_HOT_MEM),
+        hot: alive && (st.cpu * tmStats.cores >= TM_HOT_CPU_CORE || st.mem >= TM_HOT_MEM),
       });
     }
   }
@@ -140,7 +140,7 @@ function renderTaskManager() {
   const provs = [...new Set(rows.map((r) => r.prov).filter((x) => x && !x.error))];
   const usageNote = provs.length ? ' · ' + provs.map((pr) => `${pr.name} ${fmtTokens(sumTokens(pr.windows[0].tokens))} tokens/${tmWinName(pr.windows[0])}`).join(', ') : '';
   tmFoot.textContent = tmStatsError ? `Sampling failed: ${tmStatsError}` :
-    `${rows.length} terminals · ${live.length} with a live process · CPU ${live.reduce((a, r) => a + r.cpu, 0).toFixed(1)}% of ${tmStats.cores} cores (100% = one core) · memory ${fmtBytes(live.reduce((a, r) => a + r.mem, 0))}${usageNote}`;
+    `${rows.length} terminals · ${live.length} with a live process · CPU ${live.reduce((a, r) => a + r.cpu, 0).toFixed(1)}% of the machine (${tmStats.cores} cores) · memory ${fmtBytes(live.reduce((a, r) => a + r.mem, 0))}${usageNote}`;
 }
 
 let tmSampling = false, tmUsageAt = 0;

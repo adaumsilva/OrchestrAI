@@ -53,7 +53,7 @@ async function procs() {
       const dt = (now - prevAt) / 1000;
       for (const p of list) {
         const before = prevCpu.get(p.pid);
-        p.cpuPct = before == null || dt <= 0 ? 0 : Math.max(0, ((p.cpu - before) / dt) * 100);
+        p.cpuPct = before == null || dt <= 0 ? 0 : Math.max(0, ((p.cpu - before) / dt / cores) * 100); // percent of the whole machine, like the OS task manager
       }
       prevCpu = new Map(list.map((p) => [p.pid, p.cpu]));
       prevAt = now;
@@ -64,7 +64,7 @@ async function procs() {
   return pending;
 }
 
-// targets: [{ id, pid }] -> { id: { pid, cpu, mem, count, fg: { pid, name, cmd } } } (cpu is percent of one core)
+// targets: [{ id, pid }] -> { id: { pid, cpu, mem, count, fg: { pid, name, cmd } } } (cpu is percent of the whole machine)
 async function sample(targets) {
   const { procs: list } = await procs();
   const byPid = new Map(list.map((p) => [p.pid, p]));
