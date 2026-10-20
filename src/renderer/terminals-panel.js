@@ -11,7 +11,7 @@ const terminalsPanel = h('div', { id: 'terminals-panel', class: 'hidden' },
   terminalsList);
 document.body.append(terminalsPanel);
 
-const STATUS_TEXT = { restored: 'Restored', idle: 'Idle', starting: 'Starting', running: 'Running', exited: 'Exited', error: 'Error' };
+const STATUS_TEXT = { suspended: 'Suspended', restored: 'Restored', idle: 'Idle', starting: 'Starting', running: 'Running', exited: 'Exited', error: 'Error' };
 
 function terminalRows() {
   const rows = [];

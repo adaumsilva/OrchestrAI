@@ -91,7 +91,7 @@ NodeKinds.terminal = {
     let profileBtn;
 
     // ---------- status, activity monitoring and attention ----------
-    const STATUS_LABELS = { restored: 'Restored', idle: 'Idle', starting: 'Starting', running: 'Running', exited: 'Exited', error: 'Error' };
+    const STATUS_LABELS = { suspended: 'Suspended', restored: 'Restored', idle: 'Idle', starting: 'Starting', running: 'Running', exited: 'Exited', error: 'Error' };
     const dot = h('span', { class: 'status-dot', 'data-status': 'starting', title: 'Starting' });
     head.querySelector('.title').before(dot);
     let status = 'starting';
@@ -203,7 +203,33 @@ NodeKinds.terminal = {
       launch = (typed || prime) ? { stage: typed ? 'shell' : 'agent', typed, prime, started: Date.now(), typedAt: Date.now() } : null;
       if (launch) launchTimer = setInterval(launchTick, 300);
     }
+    // ---------- suspend: free the memory of a terminal on a floor nobody is looking at ----------
+    // The process is stopped and its screen kept; opening the floor (or pressing Enter) starts it again, and agents
+    // pick their conversation back up through the resume flags in withAgentSession (settings.js).
+    let suspended = false;
+    const linkedToOthers = () => (floor.ropes || []).some((r) => r.a === node.id || r.b === node.id);
+    // Never for: a Maestro, tmux-backed terminals (they are meant to keep running), terminals wired to others
+    // (a peer or Maestro may type into them), or an agent that could not resume (it would lose its conversation).
+    const suspendable = () => !node.data.maestro && !tmuxTarget(node) && !linkedToOthers() && (S().restoreScrollback || !(node.data.command || '').trim());
+    const suspendNote = () => term.write('\r\n\x1b[2m— suspended to save memory; it resumes when you open this floor (or press Enter) —\x1b[0m\r\n');
+    function suspend(force = false) { // force skips the "quiet for a minute" check (tests)
+      if (exited || suspended || !suspendable()) return false;
+      if (!force && (status !== 'idle' || awaitReply || Date.now() - lastChunk < 60000)) return false;
+      stopLaunch();
+      try { state.scrollback[node.id] = serialize.serialize({ scrollback: 300 }); } catch {}
+      suspended = true; exited = true;
+      api.ptyKill(node.id);
+      setStatus('suspended');
+      suspendNote();
+      return true;
+    }
+    function wake() {
+      if (!suspended) return;
+      suspended = false;
+      start();
+    }
     async function restart() {
+      suspended = false;
       api.ptyKill(node.id);
       stopLaunch();
       term.write('\r\n\x1b[2m— restarting —\x1b[0m\r\n');
@@ -251,7 +277,12 @@ NodeKinds.terminal = {
     term.open(body);
     body.append(findBar);
     fit.fit();
-    start();
+    // While the app boots, terminals on floors that are not showing wait until the floor is opened.
+    if (typeof lazyStart !== 'undefined' && lazyStart && floor.id !== state.active && S().suspendIdleMin > 0 && suspendable()) {
+      suspended = true; exited = true;
+      setStatus('suspended');
+      suspendNote();
+    } else start();
     let roTimer = 0;
     const ro = new ResizeObserver(() => {
       if (!body.offsetWidth) return; // hidden floor
@@ -330,6 +361,8 @@ NodeKinds.terminal = {
     entry.api.options = () => ({ fontSize: term.options.fontSize, fontFamily: term.options.fontFamily, cursorStyle: term.options.cursorStyle, scrollback: term.options.scrollback, background: term.options.theme?.background });
     entry.api.snapshot = () => serialize.serialize({ scrollback: 300 });
     entry.api.restart = restart;
+    entry.api.suspend = suspend;
+    entry.api.wake = wake;
     entry.api.status = () => status;
     entry.api.lastOutput = () => lastChunk;
     entry.api.interrupt = () => call('pty:send', node.id, String.fromCharCode(3));

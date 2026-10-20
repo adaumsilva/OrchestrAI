@@ -72,7 +72,23 @@ function applyView(f) {
   document.getElementById("zoom-pct").textContent = Math.round(zoom * 100) + "%";
 }
 
+// ---------- idle floors: stop idle terminals on floors nobody has opened for a while ----------
+let lazyStart = false; // true while booting: terminals on hidden floors wait to be opened
+const idleSince = new Map(); // floor id -> when it was last left
+setInterval(() => {
+  const min = state.settings?.terminal?.suspendIdleMin;
+  if (!(min > 0)) return;
+  const now = Date.now();
+  for (const f of allFloors()) {
+    if (f.id === state.active || now - (idleSince.get(f.id) || now) < min * 60000) continue;
+    for (const e of rt.get(f.id)?.live.values() || []) e.api?.suspend?.();
+  }
+}, 60000);
+
 function switchFloor(id) {
+  if (state.active && state.active !== id) idleSince.set(state.active, Date.now());
+  idleSince.delete(id);
+  for (const e of rt.get(id)?.live.values() || []) e.api?.wake?.();
   if (typeof flushHistory === 'function') flushHistory();
   selection.clear();
   if (typeof cancelConnect === 'function') cancelConnect();
@@ -527,8 +543,11 @@ function buildToolbar() {
   if (!state.floors.length) state.floors.push(newFloor({ name: 'Main' }));
   normalizeSettings();
   buildToolbar();
+  lazyStart = true;
   allFloors().forEach(mountFloor);
+  lazyStart = false;
   switchFloor(state.floors.find((f) => f.id === state.active)?.id || state.floors[0].id);
+  for (const f of allFloors()) if (f.id !== state.active) idleSince.set(f.id, Date.now());
   const f = activeFloor();
   if (!f.nodes.length) addNode('terminal');
   if (typeof startI18n === 'function') startI18n();

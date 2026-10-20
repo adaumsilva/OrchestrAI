@@ -15,6 +15,7 @@ const TERMINAL_DEFAULTS = {
   copyOnSelect: false,
   windowsKeys: true, // Ctrl+C copies when text is selected, Ctrl+V pastes
   restoreScrollback: true,
+  suspendIdleMin: 20, // minutes a floor may sit unopened before its idle terminals are stopped to free memory; 0 = never
   persistSessions: true, // allow terminals to keep running in tmux after the app quits
   tmuxSocket: 'orchestrai', // tmux -L socket name shared by all persistent terminals
   profileId: '', // '' = platform default shell
@@ -403,6 +404,8 @@ async function settingsDialog() {
       field('Scrollback (lines)', num('scrollback', 500, 100000, 500)),
       field('Memory limit (MB)', num('memLimitMB', 0, 262144, 256)),
       h('div', { class: 'muted' }, 'Per terminal, 0 = no limit. Past the limit the biggest child processes are stopped; the shell keeps running. A terminal can override this in its settings.'),
+      field('Suspend idle floors (minutes)', num('suspendIdleMin', 0, 1440, 5)),
+      h('div', { class: 'muted' }, 'Terminals on a floor you have not opened for this long are stopped to free memory and resume when you open it (agents continue their conversation). 0 = never. Maestros, tmux terminals, linked terminals and busy ones are left running.'),
       field('Default profile', profileSelect),
       field('Connection style', h('select', { onchange: (e) => setRopeRouting(e.target.value) }, h('option', { value: 'cable', selected: ropeRouting() === 'cable' }, 'Hanging cables'), h('option', { value: 'circuit', selected: ropeRouting() === 'circuit' }, 'Circuit traces (right angles)'))),
       check('cursorBlink', 'Blinking cursor'),
