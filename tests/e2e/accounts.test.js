@@ -47,10 +47,12 @@ module.exports = async (t) => {
   })()`);
   await t.sleep(4500);
   const screenOf = async (id) => {
-    await t.js(`rt.get(state.active).live.get('${id}').api.send(${JSON.stringify(show)}); 0`);
-    // a slow machine can take several seconds to start PowerShell: wait for the output line itself
+    const sendShow = () => t.js(`rt.get(state.active).live.get('${id}').api.send(${JSON.stringify(show)}); 0`);
+    await sendShow();
+    // a slow machine can take several seconds to start PowerShell, and a line typed before the prompt is lost: wait for the output line itself and type again every 5s
     for (let i = 0; i < 100; i++) {
       await t.sleep(250);
+      if (i && i % 20 === 0) await sendShow();
       const s = await t.js(`rt.get(state.active).live.get('${id}').api.readScreen()`);
       if (/^CFG=/m.test(s)) return s;
     }
