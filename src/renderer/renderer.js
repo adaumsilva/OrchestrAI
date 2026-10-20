@@ -342,6 +342,7 @@ function addNode(kind, partial = {}, floor = activeFloor()) {
   };
   f.nodes.push(node);
   mountNode(f, node);
+  if (typeof placeNewAgent === 'function') placeNewAgent(f, node);
   save();
   if (kind === 'terminal' && f.id === state.active) setTimeout(() => rt.get(f.id)?.live.get(node.id)?.api.focus?.(), 0);
   return node;
@@ -444,6 +445,8 @@ function mountNode(f, node) {
     const sx = e.clientX, sy = e.clientY, ow = node.w, oh = node.h;
     drag((m) => { node.w = Math.max(220, ow + (m.clientX - sx) / f.view.zoom); node.h = Math.max(140, oh + (m.clientY - sy) / f.view.zoom); place(node, el); drawRopes(f); });
   });
+  // Agent terminals can be minimised to a compact card (shell.js).
+  if (k.minimizable && typeof setupMini === 'function') setupMini(f, node, entry, { head, el, startMove });
   drawRopes(f);
 }
 

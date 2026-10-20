@@ -6,30 +6,48 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data: orchestrai-file:; media-src 'self' orchestrai-file:; frame-src * orchestrai-file:; child-src *" />
   <link rel="stylesheet" href="../../node_modules/@xterm/xterm/css/xterm.css" />
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="shell.css" />
 </head>
 <body>
   <div id="toolbar">
-    <strong class="brand">OrchestrAI</strong>
-    <div class="menu-wrap"><button id="add-btn" class="primary">+ Add ▾</button></div>
-    <button id="link-mode" title="Connect the selected node to another (C)">🔗 Connect</button>
-    <button id="sidebar-btn" title="Workspaces sidebar">▤</button>
-    <button id="palette-btn" title="Command palette (Ctrl+K)">⌕</button>
-    <button id="undo-btn" title="Undo (Ctrl+Z)">↶</button>
-    <button id="redo-btn" title="Redo (Ctrl+Shift+Z)">↷</button>
-    <button id="tidy-btn" title="Tidy nodes (T)">▦ Tidy</button>
-    <span id="hint">Drag to pan · scroll to zoom · Alt+drag moves a node</span>
+    <div class="brand-wrap"><span class="logo"></span><strong class="brand">OrchestrAI</strong></div>
+    <div id="crumbs"></div>
+    <span class="spacer"></span>
+    <div class="menu-wrap"><button id="add-btn" class="primary">+ Add agent</button></div>
+    <button id="palette-btn" class="icon-btn" title="Command palette (Ctrl+K)">&#8981;</button>
+    <button id="bell-btn" class="icon-btn" title="Activity">&#128276;<span class="badge hidden"></span></button>
+    <button id="sidebar-btn" class="icon-btn" title="Workspaces sidebar">&#9636;</button>
+  </div>
+  <div id="subbar">
+    <div id="viewtabs"></div>
+    <div id="floorbar"></div>
+    <div id="subtools">
+      <button id="focus-btn" title="Centre the canvas on the Maestro">Focus Maestro</button>
+      <button id="link-mode" class="icon-btn" title="Connect the selected node to another (C)">&#128279;</button>
+      <button id="undo-btn" class="icon-btn" title="Undo (Ctrl+Z)">&#8630;</button>
+      <button id="redo-btn" class="icon-btn" title="Redo (Ctrl+Shift+Z)">&#8631;</button>
+      <button id="tidy-btn" class="icon-btn" title="Tidy nodes (T)">&#9638;</button>
+      <button id="tools-btn" class="icon-btn" title="More tools">&#8943;</button>
+      <div id="zoom"><button id="zoom-out" title="Zoom out">&minus;</button><button class="pct" id="zoom-pct" title="Reset zoom">100%</button><button id="zoom-in" title="Zoom in">+</button></div>
+    </div>
+  </div>
+  <div id="tools-hidden" hidden>
     <button id="minimap-btn" title="Minimap (M)">Map</button>
     <button id="terminals-btn" title="Terminals overview (L)">Terminals</button>
     <button id="taskmgr-btn" title="Task manager (K)">Tasks</button>
     <button id="layouts-btn" title="Saved layouts">Layouts</button>
     <button id="routines-btn" title="Scheduled routines">Routines</button>
     <button id="usage-btn" title="Agent usage">Usage</button>
-    <button id="settings-btn" title="Terminal settings">⚙</button>
-    <button id="workspace-btn" title="Export, import and backups">⋯</button>
+    <button id="settings-btn" title="Terminal settings">Settings</button>
+    <button id="workspace-btn" title="Export, import and backups">Export</button>
     <button id="help-btn" title="Shortcuts (?)">?</button>
-    <div id="zoom"><button id="zoom-out" title="Zoom out">−</button><button class="pct" id="zoom-pct" title="Reset zoom">100%</button><button id="zoom-in" title="Zoom in">+</button></div>
   </div>
-  <div id="floorbar"></div>
+  <div id="canvas-head"></div>
+  <aside id="activity"></aside>
+  <div id="statusbar">
+    <span id="st-ws"></span><span id="st-counts"></span>
+    <span id="hint">Drag to pan &middot; scroll to zoom &middot; click an agent to open its terminal</span>
+  </div>
   <div id="viewport"></div>
   <div id="modal-root"></div>
   <script src="../../node_modules/@xterm/xterm/lib/xterm.js"></script>
@@ -84,5 +102,6 @@
   <script src="remote.js"></script>
   <script src="lifecycle.js"></script>
   <script src="bridge.js"></script>
+  <script src="shell.js"></script>
 </body>
 </html>

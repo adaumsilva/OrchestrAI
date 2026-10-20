@@ -1,5 +1,5 @@
 NodeKinds.terminal = {
-  label: 'Terminal', w: 560, h: 340,
+  label: 'Terminal', w: 560, h: 340, minimizable: true,
   mount({ node, body, cwd, entry, addButton, save, floor, el, head }) {
     const S = () => terminalSettings();
     // Per-terminal overrides (Appearance tab) win over the global terminal settings.
@@ -97,7 +97,7 @@ NodeKinds.terminal = {
     let status = 'starting';
     const setStatus = (s) => {
       status = s; dot.dataset.status = s; dot.title = STATUS_LABELS[s] + (el.classList.contains('attention') ? ' • needs attention' : '');
-      dispatchEvent(new Event('terminal-status'));
+      dispatchEvent(new CustomEvent('terminal-status', { detail: { id: node.id, status } }));
     };
     let burstStart = 0, burstBytes = 0, lastChunk = 0, quietTimer = null;
     let awaitReply = false; // a Maestro sent this terminal work and wants to hear when it goes quiet (see bridge.js)
@@ -325,6 +325,7 @@ NodeKinds.terminal = {
     entry.api.send = (text) => call('pty:send', node.id, text + '\r');
     entry.api.focus = () => term.focus();
     entry.api.readScreen = () => { const b = term.buffer.active; const lines = []; for (let i = 0; i < b.length; i++) lines.push(b.getLine(i)?.translateToString(true) ?? ''); return lines.join('\n').trimEnd(); };
+    entry.api.lastLine = () => { const b = term.buffer.active; for (let i = b.length - 1; i >= Math.max(0, b.length - term.rows - 2); i--) { const t = (b.getLine(i)?.translateToString(true) ?? '').trim(); if (t) return t; } return ''; };
     entry.api.options = () => ({ fontSize: term.options.fontSize, fontFamily: term.options.fontFamily, cursorStyle: term.options.cursorStyle, scrollback: term.options.scrollback, background: term.options.theme?.background });
     entry.api.snapshot = () => serialize.serialize({ scrollback: 300 });
     entry.api.restart = restart;

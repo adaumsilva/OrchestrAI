@@ -58,7 +58,7 @@ module.exports = async (t) => {
   await t.js(`setSidebar(true)`);
   await t.sleep(300);
   const sb = await t.js(`({ items: [...document.querySelectorAll('.sb-item .sb-name')].map((e) => e.textContent), active: document.querySelector('.sb-item.active .sb-name')?.textContent, left: getComputedStyle(document.getElementById('viewport')).left })`);
-  t.check('sidebar lists workspaces and marks the active one', sb.items.length === 3 && sb.active === 'Renamed' && sb.left === '190px', sb);
+  t.check('sidebar lists workspaces and marks the active one', sb.items.length === 3 && sb.active === 'Renamed' && sb.left === '220px', sb);
   await t.js(`document.querySelectorAll('.sb-item')[2].click()`);
   t.check('clicking a sidebar item switches workspace', (await t.js(`currentWs().name`)) === 'Second');
 
