@@ -22,7 +22,7 @@ function renderSidebar() {
       h('button', { title: 'New workspace', onclick: () => workspaceDialog2(null) }, '+'),
       h('button', { title: 'Hide sidebar', onclick: () => setSidebar(false) }, '‹')),
     h('div', { class: 'sb-list' }, state.workspaces.map((w, i) => h('div', {
-      class: 'sb-item' + (w.id === state.activeWs ? ' active' : ''), 'data-id': w.id, title: w.dir || w.name,
+      class: 'sb-item' + (w.id === state.activeWs ? ' active' : ''), 'data-id': w.id, title: w.file || w.dir || w.name,
       onclick: () => switchWorkspace(w.id),
       oncontextmenu: (e) => { e.preventDefault(); workspaceMenu(w, e.clientX, e.clientY); },
     }, h('span', { class: 'sb-name' }, w.name), h('span', { class: 'sb-count' }, `${w.floors.length} floor${w.floors.length === 1 ? '' : 's'}`),
@@ -44,6 +44,7 @@ function cycleWorkspace(dir) {
 
 function addWorkspace(opts = {}) {
   const w = { id: uid(), name: opts.name || `Workspace ${state.workspaces.length + 1}`, dir: opts.dir || '', profileId: opts.profileId || '', floors: opts.floors || [], active: null };
+  if (opts.file) w.file = opts.file; // saved in its own file instead of workspace.json
   state.workspaces.push(w);
   if (!w.floors.length) w.floors.push(newFloor({ name: 'Main', dir: w.dir }));
   w.floors.forEach(mountFloor);
@@ -121,6 +122,11 @@ async function workspaceDialog2(w) {
   const name = h('input', { value: w ? w.name : `Workspace ${state.workspaces.length + 1}` });
   const dir = h('input', { value: w?.dir || '', placeholder: 'Default folder for new floors (optional)' });
   const browse = h('button', { onclick: async () => { const d = await call('files:pickDirectory'); if (d) dir.value = d; } }, 'Browse');
+  // New workspaces can be kept in a folder of the user's choice (their own file); existing ones show where they live.
+  const saveDir = h('input', { value: '', placeholder: 'Default (with the rest of the app data)', readOnly: !!w });
+  const saveBrowse = h('button', { disabled: !!w, onclick: async () => { const d = await call('workspace:pickFolder', 'Folder to save this workspace in'); if (d) saveDir.value = d; } }, 'Browse');
+  if (w?.file) saveDir.value = w.file;
+  if (w && !w.file) saveDir.placeholder = 'With the rest of the app data';
   const { detected, custom, fallback } = await loadProfiles();
   const shell = h('select', {}, h('option', { value: '' }, `Global default (${fallback.label})`), ...[...custom, ...detected].map((p) => h('option', { value: p.id }, `${p.group}: ${p.label}`)));
   shell.value = w?.profileId || '';
@@ -129,14 +135,16 @@ async function workspaceDialog2(w) {
   ide.value = w?.ide || '';
   modal({
     title: w ? 'Workspace settings' : 'New workspace',
-    content: h('div', { style: 'display:flex;flex-direction:column;gap:10px' }, h('label', {}, 'Name', name), h('label', {}, 'Folder', h('div', { class: 'row' }, dir, browse)), h('label', {}, 'Default shell', shell), h('label', {}, 'Editor for “Open in IDE”', ide)),
+    content: h('div', { style: 'display:flex;flex-direction:column;gap:10px' }, h('label', {}, 'Name', name), h('label', {}, 'Folder', h('div', { class: 'row' }, dir, browse)), h('label', {}, 'Save workspace in', h('div', { class: 'row' }, saveDir, saveBrowse)), h('label', {}, 'Default shell', shell), h('label', {}, 'Editor for “Open in IDE”', ide)),
     actions: [
       { label: 'Cancel', onClick: (c) => c() },
       {
-        label: w ? 'Save' : 'Create', primary: true, onClick: (c) => {
+        label: w ? 'Save' : 'Create', primary: true, onClick: async (c) => {
+          const nm = name.value.trim() || undefined;
+          const file = !w && saveDir.value.trim() ? await call('workspace:fileFor', saveDir.value.trim(), nm || `Workspace ${state.workspaces.length + 1}`) : '';
           c();
           if (w) { w.name = name.value.trim() || w.name; w.dir = dir.value.trim(); w.profileId = shell.value; w.ide = ide.value; save(); renderSidebar(); }
-          else addWorkspace({ name: name.value.trim() || undefined, dir: dir.value.trim(), profileId: shell.value }).ide = ide.value;
+          else addWorkspace({ name: nm, dir: dir.value.trim(), profileId: shell.value, file }).ide = ide.value;
         },
       },
     ],

@@ -15,6 +15,7 @@ const procstats = require('./services/procstats');
 const filesExtra = require('./services/files-extra');
 const accounts = require('./services/accounts');
 const storage = require('./services/storage');
+const location = require('./services/location');
 storage.applyPointer(app); // honour a moved data folder before anything reads userData
 let store = null;
 let lifecycle = null;
@@ -40,7 +41,6 @@ function ensureSpawnHelper() {
 }
 ensureSpawnHelper();
 
-const stateFile = () => path.join(app.getPath('userData'), 'workspace.json');
 
 function defaultShell() {
   return process.platform === 'win32' ? 'powershell.exe' : process.env.SHELL || '/bin/bash';
@@ -231,20 +231,17 @@ ipcMain.handle('pty:killPid', async (_e, id, pid, force) => {
   return procstats.killTree(pid, !!force);
 });
 
-ipcMain.handle('workspace:load', () => {
-  try { return JSON.parse(fs.readFileSync(stateFile(), 'utf8')); } catch { return null; }
-});
+ipcMain.handle('workspace:load', () => location.load());
 ipcMain.handle('workspace:save', (_e, data) => {
   if (store?.isLocked()) return;
-  fs.mkdirSync(path.dirname(stateFile()), { recursive: true });
-  fs.writeFileSync(stateFile(), JSON.stringify(data, null, 2));
+  location.save(data);
 });
 // Used on window unload, when async IPC may not get to run.
 ipcMain.on('workspace:saveSync', (e, data) => {
-  if (store?.isLocked()) { e.returnValue = true; return; }
-  try { fs.mkdirSync(path.dirname(stateFile()), { recursive: true }); fs.writeFileSync(stateFile(), JSON.stringify(data, null, 2)); } catch {}
+  if (!store?.isLocked()) { try { location.save(data); } catch {} }
   e.returnValue = true;
 });
+location.register(ipcMain, { dialog: require('electron').dialog, getWin });
 // Works regardless of which element has focus (navigator.clipboard needs a focused document).
 ipcMain.handle('app:copy', (_e, text) => { clipboard.writeText(String(text)); return true; });
 ipcMain.handle('app:notify', (_e, { title, body }) => {

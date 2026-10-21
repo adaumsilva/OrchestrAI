@@ -533,6 +533,7 @@ function buildToolbar() {
 (async () => {
   // Classic scripts after this one (ropes.js) must finish loading before nodes mount.
   if (document.readyState === 'loading') await new Promise((res) => addEventListener('DOMContentLoaded', res));
+  if (typeof firstRunSetup === 'function') await firstRunSetup();
   const saved = await call('workspace:load');
   if (saved?.floors || saved?.workspaces) state = saved;
   else if (saved?.nodes) {
