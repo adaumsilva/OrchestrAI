@@ -156,13 +156,13 @@ function deliverPrompt(t, text, { waitIdle = false, maxWaitMs = 600000 } = {}) {
     await call('pty:send', id, multi ? `\x1b[200~${text}\x1b[201~` : text);
     // Let the paste's echo and redraw finish first: an idle agent repaints late, and that output must not be mistaken
     // for a reaction to Enter (the message would then sit unsubmitted until something else poked the terminal).
-    await bridgeSleep(multi ? 400 : 150);
+    await bridgeSleep(multi ? 1000 : 500); // an idle TUI may repaint up to a second after input, without echoing it right away
     for (let settled = Date.now(); Date.now() - settled < 3000 && Date.now() - (api.lastOutput?.() || 0) < 500;) await bridgeSleep(100);
     for (let attempt = 0; attempt < 5; attempt++) {
       const mark = Date.now();
       await call('pty:send', id, '\r');
       await bridgeSleep(1500);
-      if ((api.lastOutput?.() || 0) >= mark + 20 || api.status?.() === 'running') return true;
+      if ((api.lastOutput?.() || 0) >= mark) return true; // not status: the paste itself already made it 'running'
     }
     return false;
   });
