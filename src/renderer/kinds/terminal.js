@@ -109,8 +109,10 @@ NodeKinds.terminal = {
       setStatus(status);
       if (!document.hasFocus()) call('app:notify', { title: `${node.title} finished`, body: 'The terminal output went quiet.' });
     };
+    let resizeQuietUntil = 0; // the redraw an agent does after a resize is not activity (maximising a card must not look like work)
     const noteOutput = (len) => {
       const now = Date.now();
+      if (now < resizeQuietUntil && status !== 'running') return;
       if (now - lastChunk > 2500) { burstStart = now; burstBytes = 0; }
       burstBytes += len;
       lastChunk = now;
@@ -290,7 +292,11 @@ NodeKinds.terminal = {
       clearTimeout(roTimer);
       roTimer = setTimeout(() => {
         if (!body.offsetWidth) return;
-        try { fit.fit(); api.ptyResize(node.id, term.cols, term.rows); term.refresh(0, term.rows - 1); } catch {}
+        try {
+          fit.fit();
+          resizeQuietUntil = Date.now() + 1500; // the pty repaints on any resize call, even to the same size (ConPTY)
+          api.ptyResize(node.id, term.cols, term.rows); term.refresh(0, term.rows - 1);
+        } catch {}
       }, 60);
     });
     ro.observe(body);

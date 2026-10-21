@@ -154,12 +154,15 @@ function deliverPrompt(t, text, { waitIdle = false, maxWaitMs = 600000 } = {}) {
     }
     const multi = /[\r\n]/.test(text);
     await call('pty:send', id, multi ? `\x1b[200~${text}\x1b[201~` : text);
+    // Let the paste's echo and redraw finish first: an idle agent repaints late, and that output must not be mistaken
+    // for a reaction to Enter (the message would then sit unsubmitted until something else poked the terminal).
     await bridgeSleep(multi ? 400 : 150);
-    for (let attempt = 0; attempt < 4; attempt++) {
+    for (let settled = Date.now(); Date.now() - settled < 3000 && Date.now() - (api.lastOutput?.() || 0) < 500;) await bridgeSleep(100);
+    for (let attempt = 0; attempt < 5; attempt++) {
       const mark = Date.now();
       await call('pty:send', id, '\r');
-      await bridgeSleep(2000);
-      if ((api.lastOutput?.() || 0) >= mark) return true;
+      await bridgeSleep(1500);
+      if ((api.lastOutput?.() || 0) >= mark + 20 || api.status?.() === 'running') return true;
     }
     return false;
   });
@@ -231,9 +234,9 @@ function pollWatches() {
     if (answered && ((stopped && quiet >= 1500) || (status === 'idle' && quiet >= 4500))) {
       replyWatch.delete(id);
       report(w, `"${title}" finished the task you sent it. Its latest output:\n${tailOf(screen)}`);
-    } else if (!answered && status !== 'running' && quiet >= 20000 && now - w.lastNudge >= 20000) {
+    } else if (!answered && status !== 'running' && quiet >= 6000 && now - w.lastNudge >= 6000) {
       // Still only our own echo: the message may be sitting unsubmitted in the input. Press Enter, then give up.
-      if (w.nudges >= 2) {
+      if (w.nudges >= 4) {
         replyWatch.delete(id);
         report(w, `"${title}" did not respond to the task you sent it (it looks idle with the message unanswered). Check it with orchestrai read "${title}" and resend if needed.`);
       } else { w.nudges++; w.lastNudge = now; call('pty:send', id, '\r'); }
