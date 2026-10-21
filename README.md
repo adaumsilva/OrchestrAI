@@ -9,7 +9,7 @@
 
 > Independent open-source project. It is not affiliated with or endorsed by any similar product.
 
-![A Maestro terminal conducting Claude Code and Codex terminals, connected by ropes, with a planning note](docs/images/canvas.png)
+![A Maestro terminal directing two agent terminals, connected by ropes, with a planning note](docs/images/canvas.png)
 
 ## Why OrchestrAI
 - **Unlimited workspaces, free.** Create as many floors (separate canvases, each with its own folder, optionally an isolated git worktree) and as many terminals and nodes as your machine can handle. No workspace caps, no paid tiers, no license keys.
@@ -47,9 +47,9 @@ If you launch from a VS Code or Claude Code shell, unset `ELECTRON_RUN_AS_NODE` 
 Download an installer from the [releases page](https://github.com/adaumsilva/OrchestrAI/releases) (Windows, macOS, Linux), or build one yourself: see [docs/PACKAGING.md](docs/PACKAGING.md). Builds are not code-signed yet, so your OS will ask you to confirm the first launch.
 
 ## Screenshots
-![Task manager showing Claude Code and Codex running, with CPU, memory, tokens and limits](docs/images/tasks.png)
+![Task manager listing the running terminals with status, CPU, memory, uptime and controls](docs/images/tasks.png)
 
-![The terminal settings sheet](docs/images/terminal-sheet.png)
+![The new terminal sheet with quick-start presets](docs/images/terminal-sheet.png)
 
 ## Contributing
 Contributions are welcome, including your first one.
