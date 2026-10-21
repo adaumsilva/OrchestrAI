@@ -159,3 +159,10 @@ Layout after extraction (`out/` is electron-vite output):
 - Those test scripts currently live outside the repo; moving them into `tests/e2e/` is issue #34.
 - External tools on this machine: Git Bash and WSL (Ubuntu) present; `adb`, `docker` and `pwsh` absent (Device node and Docker profiles are untested).
 - Engineering skills installed in `~/.claude/skills` (31, from mhattingpete/claude-skills-marketplace and patricio0312rev/skills; markdown only, license files kept next to each).
+
+## Testing policy (hard rule)
+- Every feature and every bug fix ships with a test in the same change. Features: `tests/e2e/<feature>.test.js` (drives the real Electron app, see `tests/e2e/entry.js` for the `t` helper). Pure logic: `tests/unit/<name>.test.js`.
+- A bug fix needs a test that **fails without the fix**: verify by stashing the fix (`git stash push <file>`), running the test, and popping it.
+- Changing behavior means updating the tests that assert the old behavior; never delete a check to make a run green.
+- Run `node tests/e2e/run.js <name-filter>` for the affected area, and `npm test` before a release. CI (`scripts/check-tests-changed.js`) fails a PR that changes `src/` or `bin/` without touching `tests/`; `[no-tests]` in a commit message opts out, with a reason.
+- Fake agents/TUIs for tests are written to `os.tmpdir()` and removed at the end; tests never touch the real profile.
