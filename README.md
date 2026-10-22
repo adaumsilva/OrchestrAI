@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/images/logo.svg" alt="OrchestrAI logo" width="96"></p>
+
 # OrchestrAI
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -6,6 +8,8 @@
 [![good first issues](https://img.shields.io/github/issues/adaumsilva/OrchestrAI/good%20first%20issue?label=good%20first%20issues&color=7057ff)](https://github.com/adaumsilva/OrchestrAI/labels/good%20first%20issue)
 
 **A spatial canvas for orchestrating LLMs and AI coding agents side by side.** Arrange terminals, notes, git, files, browsers and Android devices on an infinite canvas, connect them with ropes, run each agent in an isolated git worktree ("floor"), and let a *Maestro* terminal conduct the rest. Works with Claude Code, Codex, OpenCode, Antigravity or any CLI. Built with Electron, xterm.js and node-pty.
+
+**[⬇ Download](https://github.com/adaumsilva/OrchestrAI/releases/latest)** · **[Learn more](https://adaumsilva.github.io/OrchestrAI/)**
 
 > Independent open-source project. It is not affiliated with or endorsed by any similar product.
 
