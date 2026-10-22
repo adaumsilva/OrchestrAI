@@ -17,7 +17,7 @@ body.act-open { --actw: 320px; }
 #toolbar { height: var(--top); padding: 0 16px; gap: 10px; background: var(--panel); border-bottom: 1px solid var(--border); z-index: 30; }
 #toolbar .brand-wrap { display: flex; align-items: center; gap: 10px; width: calc(220px - 16px); }
 #toolbar .brand { font-size: 17px; letter-spacing: 0; }
-.logo { width: 28px; height: 28px; border-radius: 50%; background: radial-gradient(circle at 50% 50%, var(--panel) 0 34%, transparent 36%), conic-gradient(from 200deg, #22d3ee, var(--accent), #6366f1, #22d3ee); box-shadow: 0 0 14px var(--accent-soft); flex: none; }
+.logo { width: 28px; height: 28px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3Cmask id='cuts' maskUnits='userSpaceOnUse' x='0' y='0' width='100' height='100'%3E%3Crect width='100' height='100' fill='%23fff'/%3E%3Cg transform='translate%2850 50%29' fill='%23000'%3E%3Crect x='-3.8' y='-60' width='7.6' height='60'/%3E%3Crect x='-3.8' y='-60' width='7.6' height='60' transform='rotate%28120%29'/%3E%3Crect x='-3.8' y='-60' width='7.6' height='60' transform='rotate%28240%29'/%3E%3C/g%3E%3C/mask%3E%3C/defs%3E%3Ccircle cx='50' cy='50' r='38.55' fill='none' stroke='%230a84ff' stroke-width='18.9' mask='url%28%23cuts%29'/%3E%3Ccircle cx='50' cy='50' r='17' fill='%230a84ff'/%3E%3C/svg%3E ") center / contain no-repeat; flex: none; }
 #crumbs { display: flex; align-items: center; gap: 8px; color: var(--fg-muted); min-width: 0; white-space: nowrap; }
 #crumbs .crumb-floor { color: var(--fg); font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
 #crumbs .crumb-sep { color: var(--fg-subtle); }
@@ -51,6 +51,8 @@ body #floorbar, body.sb-open #floorbar { position: static; flex: 1; min-width: 0
 /* canvas area */
 body #viewport { top: calc(var(--top) + var(--sub)); left: var(--sbw); right: var(--actw); bottom: var(--stat); inset-block-start: calc(var(--top) + var(--sub)); background-image: radial-gradient(circle, var(--grid) 1.2px, transparent 1.4px); background-size: var(--cell, 32px) var(--cell, 32px); }
 #canvas-head { position: fixed; z-index: 5; top: calc(var(--top) + var(--sub) + 18px); left: calc(var(--sbw) + 26px); pointer-events: none; }
+#canvas-actions { position: fixed; z-index: 11; top: calc(var(--top) + var(--sub) + 14px); right: calc(var(--actw) + 20px); display: flex; align-items: center; gap: 8px; }
+#canvas-actions .menu { left: auto; right: 0; }
 #canvas-head h1 { margin: 0; font-size: 26px; font-weight: 600; }
 #canvas-head p { margin: 4px 0 10px; color: var(--fg-muted); font-size: 15px; }
 .cnt-row, #st-counts { display: flex; gap: 16px; align-items: center; }

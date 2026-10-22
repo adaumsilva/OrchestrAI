@@ -1,4 +1,4 @@
-// System tray icon. The icon is generated in code (a blue disc with a ring) so no asset file is needed.
+// System tray icon. The icon is generated in code (the OrchestrAI logo, drawn pixel by pixel) so no asset file is needed.
 const { Tray, Menu, nativeImage, app } = require('electron');
 const zlib = require('zlib');
 
@@ -19,18 +19,33 @@ function chunk(type, data) {
   return Buffer.concat([len, body, crc]);
 }
 
+// The logo: a ring cut into three arcs around a solid centre disc, in the accent blue on a transparent background.
+// Geometry is in a 100x100 box and mirrors docs/images/logo.svg. Rendered with 4x4 supersampling so edges stay smooth.
+const LOGO = {
+  outer: 48, inner: 29.1, disc: 17, gap: 7.6, color: [10, 132, 255],
+  cuts: [[0, -1], [Math.sqrt(3) / 2, 0.5], [-Math.sqrt(3) / 2, 0.5]], // the three gaps: up, lower right, lower left
+};
+
+function inLogo(x, y) {
+  const L = LOGO, px = x - 50, py = y - 50, r = Math.hypot(px, py);
+  if (r <= L.disc) return true;
+  if (r < L.inner || r > L.outer) return false;
+  return !L.cuts.some(([dx, dy]) => px * dx + py * dy > 0 && Math.abs(px * dy - py * dx) < L.gap / 2);
+}
+
 function makeIcon(size = 32) {
   const raw = Buffer.alloc((size * 4 + 1) * size);
-  const c = (size - 1) / 2;
+  const SS = 4, L = LOGO;
   for (let y = 0; y < size; y++) {
     raw[y * (size * 4 + 1)] = 0; // filter: none
     for (let x = 0; x < size; x++) {
-      const d = Math.hypot(x - c, y - c);
+      let on = 0;
+      for (let sy = 0; sy < SS; sy++) for (let sx = 0; sx < SS; sx++) {
+        if (inLogo((x + (sx + 0.5) / SS) * 100 / size, (y + (sy + 0.5) / SS) * 100 / size)) on++;
+      }
       const o = y * (size * 4 + 1) + 1 + x * 4;
-      const edge = Math.min(1, Math.max(0, size / 2 - 1 - d + 0.5)); // anti-aliased outer edge
-      const ring = d > size * 0.22 && d < size * 0.34;
-      const [r, g, b] = ring ? [255, 255, 255] : [10, 132, 255];
-      raw[o] = r; raw[o + 1] = g; raw[o + 2] = b; raw[o + 3] = Math.round(edge * 255);
+      raw[o] = L.color[0]; raw[o + 1] = L.color[1]; raw[o + 2] = L.color[2];
+      raw[o + 3] = Math.round(on / (SS * SS) * 255);
     }
   }
   const ihdr = Buffer.alloc(13);
