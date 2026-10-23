@@ -21,6 +21,13 @@ function writeAtomic(file, text) {
   fs.renameSync(tmp, file);
 }
 
+function workspaceFileFor(folder, name, { existsSync = fs.existsSync, pathApi = path } = {}) {
+  const base = String(name || 'workspace').replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim().slice(0, 80) || 'workspace';
+  let file = pathApi.join(folder, `${base}.orchestrai.json`), i = 2;
+  while (existsSync(file)) file = pathApi.join(folder, `${base} (${i++}).orchestrai.json`);
+  return file;
+}
+
 function load() {
   let data;
   try { data = JSON.parse(fs.readFileSync(stateFile(), 'utf8')); } catch { return null; }
@@ -57,12 +64,7 @@ function register(ipcMain, { dialog, getWin }) {
     return r.canceled ? null : r.filePaths[0];
   });
   // Where a new workspace's file would go: <folder>/<name>.orchestrai.json, never overwriting another file.
-  ipcMain.handle('workspace:fileFor', (_e, folder, name) => {
-    const base = String(name || 'workspace').replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim().slice(0, 80) || 'workspace';
-    let file = path.join(folder, `${base}.orchestrai.json`), i = 2;
-    while (fs.existsSync(file)) file = path.join(folder, `${base} (${i++}).orchestrai.json`);
-    return file;
-  });
+  ipcMain.handle('workspace:fileFor', (_e, folder, name) => workspaceFileFor(folder, name));
 }
 
-module.exports = { register, load, save, stateFile };
+module.exports = { register, load, save, stateFile, workspaceFileFor };
